@@ -1,0 +1,70 @@
+<?php 
+session_start();
+include_once '../config.php';
+$user_id = $_SESSION['Admin']['id'];
+if($_POST['action'] == 'deletePhoto') {
+   	$id = $_POST['id'];
+   	$Photo = $_POST['Photo'];
+    $query = "UPDATE tbl_assignments SET Photo='' WHERE id=$id";
+    $conn->query($query);
+    $src = "../../uploads/$Photo";
+    unlink($src);
+    echo "Photo Delete Successfully";
+
+  }
+
+if($_POST['action'] == 'deleteDoc'){
+    $id = $_POST['id'];
+    $Photo = $_POST['Photo'];
+        $q = "UPDATE tbl_assignments SET File='' WHERE id=$id";
+        $conn->query($q);
+        $src = "../../uploads/$Photo";
+        unlink($src);
+
+    echo "Document Delete Successfully";
+}
+
+if($_POST['action'] == 'showMaterial'){
+    $deptid = $_POST['deptid'];
+    $batchid = $_POST['batchid'];
+    $subjectid = $_POST['subjectid'];
+    $subtopicid = $_POST['subtopicid'];
+      $sql22 = "SELECT * FROM tbl_upload_materials WHERE Status=1 AND MatFor=2";
+      if($deptid!=''){
+      $sql22.= " AND DeptId='$deptid'";
+      }
+      /*if($courseid!=''){
+      $sql22.= " AND CourseId='$courseid'";  
+      }*/
+      if($subjectid!=''){
+      $sql22.= " AND SubjectId='$subjectid'";  
+      }
+      if($subtopicid!=''){
+      $sql22.= " AND SubTopicId='$subtopicid'";  
+      }
+      //echo $sql22;
+      $row22 = getList($sql22);
+      foreach($row22 as $result22){
+
+        $sql7 = "SELECT File FROM tbl_assignments WHERE DeptId='$deptid' AND SubjectId='$subjectid' AND SubTopicId='$subtopicid' AND BatchId='$batchid'";
+        $row7 = getRecord($sql7);
+        $row7['File'] = explode(',', $row7['File']);
+  ?>
+  <div class="col-lg-4">
+    <div class="form-group">
+      <div class="custom-control custom-checkbox custom-control-inline">
+        <input type="checkbox" id="m<?php echo $result22['id']; ?>" name="File[]" class="custom-control-input advisior" value="<?php echo $result22['id']; ?>" <?php if(in_array($result22["id"],$row7['File'])) { ?>checked="checked" <?php } ?>> <label class="custom-control-label" for="m<?php echo $result22['id']; ?>"><?php echo $result22['Name']; ?></label></div>
+  </div></div>
+<?php }}
+
+if($_POST['action'] == 'getAssignDetails'){
+  $deptid = $_POST['deptid'];
+    $batchid = $_POST['batchid'];
+    $subjectid = $_POST['subjectid'];
+    $subtopicid = $_POST['subtopicid'];
+    $query = "SELECT * FROM tbl_assignments WHERE DeptId='$deptid' AND SubjectId='$subjectid' AND SubTopicId='$subtopicid' AND BatchId='$batchid'";
+    $result = $conn->query($query);
+    $row = $result->fetch_assoc();
+    echo json_encode($row);
+}
+?>
