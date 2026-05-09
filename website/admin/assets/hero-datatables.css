@@ -1,0 +1,357 @@
+/**
+ * Hero slides DataTables — light dashboard look (search, length, info, pagination).
+ */
+
+.hero-dt-shell {
+  --hero-dt-orange: #f97316;
+  --hero-dt-orange-hover: #ea580c;
+  --hero-dt-red: #f43f5e;
+  --hero-dt-border: #e2e8f0;
+  --hero-dt-header-bg: #f1f5f9;
+  --hero-dt-row-alt: #fafbfc;
+  --hero-dt-muted: #64748b;
+  --hero-dt-text: #1e293b;
+}
+
+.hero-dt-add-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.hero-dt-btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--admin-font, inherit);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--hero-dt-orange), var(--hero-dt-orange-hover));
+  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero-dt-btn-add:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.45);
+}
+
+/* Wrapper */
+.hero-dt-shell .dataTables_wrapper {
+  font-family: var(--admin-font, system-ui, sans-serif);
+  color: var(--hero-dt-text);
+}
+
+.hero-dt-shell .hero-dt-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1rem;
+  padding: 0.35rem 0;
+}
+
+.hero-dt-shell .dataTables_length label,
+.hero-dt-shell .dataTables_filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--hero-dt-muted);
+  margin: 0;
+}
+
+.hero-dt-shell .dataTables_length select {
+  appearance: auto;
+  min-width: 4.25rem;
+  padding: 0.45rem 2rem 0.45rem 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--hero-dt-text);
+  background-color: #fff;
+  border: 1px solid var(--hero-dt-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.hero-dt-shell .dataTables_filter input {
+  margin-left: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  min-width: 220px;
+  font-size: 0.875rem;
+  color: var(--hero-dt-text);
+  background: #fff;
+  border: 1px solid var(--hero-dt-border);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero-dt-shell .dataTables_filter input:focus {
+  border-color: rgba(249, 115, 22, 0.55);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+/* Table */
+.hero-dt-shell table.dataTable {
+  margin-top: 0 !important;
+}
+
+.hero-dt-shell table.hero-dt-table {
+  width: 100% !important;
+  margin: 0 !important;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--hero-dt-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  font-size: 0.875rem;
+}
+
+.hero-dt-shell table.hero-dt-table thead th {
+  padding: 0.85rem 1rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--hero-dt-text);
+  background: var(--hero-dt-header-bg);
+  border-bottom: 1px solid var(--hero-dt-border);
+  border-right: 1px solid var(--hero-dt-border);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.hero-dt-shell table.hero-dt-table thead th:last-child {
+  border-right: none;
+}
+
+.hero-dt-shell table.hero-dt-table tbody td {
+  padding: 0.9rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--hero-dt-border);
+  border-right: 1px solid var(--hero-dt-border);
+  color: var(--hero-dt-text);
+  background: #fff;
+}
+
+.hero-dt-shell table.hero-dt-table tbody td:last-child {
+  border-right: none;
+}
+
+.hero-dt-shell table.hero-dt-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hero-dt-shell table.hero-dt-table tbody tr:nth-child(even) td {
+  background: var(--hero-dt-row-alt);
+}
+
+.hero-dt-shell table.hero-dt-table tbody tr:hover td {
+  background: #fff7ed;
+}
+
+/* Sorting indicators (no default DataTables images) */
+.hero-dt-shell table.hero-dt-table thead th.sorting,
+.hero-dt-shell table.hero-dt-table thead th.sorting_asc,
+.hero-dt-shell table.hero-dt-table thead th.sorting_desc {
+  cursor: pointer;
+  padding-right: 1.75rem;
+  position: relative;
+}
+
+.hero-dt-shell table.hero-dt-table thead th.sorting::after,
+.hero-dt-shell table.hero-dt-table thead th.sorting_asc::after,
+.hero-dt-shell table.hero-dt-table thead th.sorting_desc::after {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.65rem;
+  line-height: 1;
+  opacity: 0.45;
+  color: var(--hero-dt-muted);
+}
+
+.hero-dt-shell table.hero-dt-table thead th.sorting::after {
+  content: "⇅";
+  opacity: 0.35;
+}
+
+.hero-dt-shell table.hero-dt-table thead th.sorting_asc::after {
+  content: "▲";
+  opacity: 1;
+  color: var(--hero-dt-orange);
+}
+
+.hero-dt-shell table.hero-dt-table thead th.sorting_desc::after {
+  content: "▼";
+  opacity: 1;
+  color: var(--hero-dt-orange);
+}
+
+.hero-dt-shell table.hero-dt-table thead th.sorting_disabled {
+  cursor: default;
+}
+
+.hero-dt-shell table.hero-dt-table thead th.sorting_disabled::after {
+  display: none;
+}
+
+.hero-dt-shell table.hero-dt-table tbody td code {
+  font-size: 0.78rem;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+}
+
+/* Icon actions */
+.hero-dt-col-actions {
+  white-space: nowrap;
+  text-align: center !important;
+}
+
+.hero-dt-actions-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.hero-dt-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--hero-dt-border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero-dt-icon-btn--edit {
+  color: var(--hero-dt-orange);
+  border-color: #fed7aa;
+}
+
+.hero-dt-icon-btn--edit:hover {
+  background: #fff7ed;
+  border-color: var(--hero-dt-orange);
+  color: var(--hero-dt-orange-hover);
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.2);
+}
+
+.hero-dt-icon-btn--delete {
+  color: var(--hero-dt-red);
+  border-color: #fecdd3;
+}
+
+.hero-dt-icon-btn--delete:hover {
+  background: #fff1f2;
+  border-color: var(--hero-dt-red);
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.15);
+}
+
+.hero-dt-icon-form {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+/* Footer: info + pagination */
+.hero-dt-shell .hero-dt-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--hero-dt-border);
+}
+
+.hero-dt-shell .dataTables_info {
+  padding: 0;
+  font-size: 0.8125rem;
+  color: var(--hero-dt-muted);
+  font-weight: 500;
+}
+
+.hero-dt-shell .dataTables_paginate {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hero-dt-shell .dataTables_paginate .paginate_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.65rem;
+  margin: 0 !important;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--hero-dt-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+
+.hero-dt-shell .dataTables_paginate .paginate_button:hover:not(.disabled):not(.current) {
+  color: var(--hero-dt-text) !important;
+  background: #f1f5f9 !important;
+}
+
+.hero-dt-shell .dataTables_paginate .paginate_button.current,
+.hero-dt-shell .dataTables_paginate .paginate_button.current:hover {
+  color: #fff !important;
+  background: var(--hero-dt-orange) !important;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+}
+
+.hero-dt-shell .dataTables_paginate .paginate_button.disabled,
+.hero-dt-shell .dataTables_paginate .paginate_button.disabled:hover {
+  opacity: 0.35;
+  cursor: default !important;
+  color: var(--hero-dt-muted) !important;
+  background: transparent !important;
+}
+
+.hero-dt-shell .dataTables_paginate span.ellipsis {
+  padding: 0 0.35rem;
+  color: var(--hero-dt-muted);
+  font-weight: 600;
+  cursor: default;
+}
+
+.hero-dt-shell .dataTables_empty {
+  padding: 2rem 1rem !important;
+  text-align: center;
+  color: var(--hero-dt-muted);
+  font-size: 0.9rem;
+}
+
+/* Processing overlay subtle */
+.hero-dt-shell .dataTables_processing {
+  border-radius: 10px;
+  border: 1px solid var(--hero-dt-border);
+  box-shadow: var(--admin-shadow, 0 4px 24px rgba(15, 23, 42, 0.08));
+}

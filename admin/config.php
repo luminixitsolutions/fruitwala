@@ -1,9 +1,9 @@
 <?php
 error_reporting(0);
 $servername = "localhost";
-$username = "kwickbill_break";
-$password = "Ca33YkFpl6bjJ9iU";
-$dbname = "kwickbill_break";
+$username = "root";
+$password = "";
+$dbname = "fruitwala";
 
 
 /// Create connection

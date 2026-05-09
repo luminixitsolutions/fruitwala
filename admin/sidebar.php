@@ -117,6 +117,7 @@
           <li class="sidenav-item"><a href="all-order-report.php" class="sidenav-link">All Orders</a></li>
         <li class="sidenav-item"><a href="delivered-report.php" class="sidenav-link">Delivered Orders</a></li>
         <li class="sidenav-item"><a href="pending-report.php" class="sidenav-link">Pending Orders</a></li>
+        <li class="sidenav-item"><a href="recent-activity-report.php" class="sidenav-link">Recent Activity</a></li>
          <li class="sidenav-item"><a href="delivery-graph-report.php" class="sidenav-link">Delivery Growth Report</a></li>
          <li class="sidenav-item"><a href="earning-growth-report.php" class="sidenav-link">Earning Growth Report</a></li>
         <li class="sidenav-item"><a href="active-customers-report.php" class="sidenav-link">Active Customers</a></li>
