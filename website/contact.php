@@ -1,4 +1,10 @@
-<?php include 'header.php'; ?>
+<?php
+include 'header.php';
+require_once __DIR__ . '/includes/company_profile.php';
+$company = fruitwala_company_profile_load($conn);
+$igUrl = trim($company['instagram_url'] ?? '');
+$addrText = trim(str_replace("\r\n", "\n", (string) ($company['address'] ?? '')));
+?>
             <!-- main body start -->
             <main>
                 
@@ -43,7 +49,7 @@
                             Have a question or want to place an order? We’d love to hear from you! Whether you're looking for daily fruit boxes, customized fruit baskets, or bulk corporate orders, our team is here to help you choose the perfect fresh selection.
                         </p>
 
-                        <a href="https://www.instagram.com/fruitwala_breakfast/" target="_blank">
+                        <a href="<?= htmlspecialchars(fruitwala_company_profile_url_or_hash($igUrl), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">
                             <button type="button"
                                 class="btn custom_btn load_more_1 rounded-pill px-3 px-sm-4 py-3 text-white text-uppercase">
                                 Contact Us on Instagram <i class="fas fa-long-arrow-alt-right"></i>
@@ -131,7 +137,7 @@
                             data-lat="19.0760"
                             data-lon="72.8777"
                             data-zoom="12"
-                            data-info="Fruitwala Breakfast - Fresh Fruit Box Delivery"
+                            data-info="<?= htmlspecialchars($company['company_name'] . ' — Fresh fruit delivery', ENT_QUOTES, 'UTF-8') ?>"
                             data-mlat="19.0760"
                             data-mlon="72.8777">
                         </div>
@@ -213,10 +219,20 @@
                             <i class="far fa-circle"></i>
                             <i class="far fa-circle"></i>
                         </div>
-                        <h4 class="address_title">Phone & Instagram</h4>
+                        <h4 class="address_title">Phone, email &amp; Instagram</h4>
                         <p class="address_desc">
-                            📞 +91 8812925014<br>
-                            📩 DM us on Instagram: @fruitwala_breakfast
+                            <?php if (trim($company['phone']) !== ''): ?>
+                            <a href="<?= htmlspecialchars(fruitwala_company_profile_tel_href($company['phone']), ENT_QUOTES, 'UTF-8') ?>">📞 <?= htmlspecialchars($company['phone'], ENT_QUOTES, 'UTF-8') ?></a><br>
+                            <?php endif; ?>
+                            <?php if (trim($company['email']) !== ''): ?>
+                            <a href="mailto:<?= htmlspecialchars($company['email'], ENT_QUOTES, 'UTF-8') ?>">✉️ <?= htmlspecialchars($company['email'], ENT_QUOTES, 'UTF-8') ?></a><br>
+                            <?php endif; ?>
+                            <?php if ($igUrl !== ''): ?>
+                            <a href="<?= htmlspecialchars($igUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">📩 DM us on Instagram</a>
+                            <?php endif; ?>
+                            <?php if (trim($company['phone']) === '' && trim($company['email']) === '' && $igUrl === ''): ?>
+                            Add phone, email, and Instagram in <strong>Admin → Company profile</strong>.
+                            <?php endif; ?>
                         </p>
                     </div>
                 </div>

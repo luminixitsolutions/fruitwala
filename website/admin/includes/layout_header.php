@@ -11,7 +11,12 @@ $tSub = (string) ($_GET['sub'] ?? '');
 $testimonialsOnForm = ($activeHomeSlug === 'testimonials' && in_array($tSub, ['add', 'edit'], true));
 $testimonialNavOpen = ($activeNav === 'testimonial');
 $galleryNavOpen = ($activeNav === 'gallery');
-$homeNavOpen = ($activeNav === 'home');
+$galleryOnAddForm = ($activeHomeSlug === 'gallery' && in_array($tSub, ['', 'add', 'edit'], true));
+$stripSidebarScript = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+$stripSidebarViewActive = ($stripSidebarScript === 'gallery_strip_sidebar_view.php');
+$stripSidebarListActive = ($activeHomeSlug === 'gallery_strip_sidebar' && $tSub === '');
+$stripSidebarAddActive = ($activeHomeSlug === 'gallery_strip_sidebar' && in_array($tSub, ['add', 'edit'], true));
+$homeNavOpen = ($activeNav === 'home' || $activeNav === 'gallery_strip_sidebar');
 $pkgSub = (string) ($_GET['sub'] ?? '');
 $packagesOnForm = ($activeNav === 'packages' && in_array($pkgSub, ['add', 'edit'], true));
 $packagesNavOpen = ($activeNav === 'packages');
@@ -57,9 +62,13 @@ $settingsNavOpen = ($activeNav === 'company' || $activeNav === 'change_password'
           <a class="admin-nav-sub<?= $activeHomeSlug === 'reels' ? ' active' : '' ?>" href="home_edit.php?s=reels"><i class="fas fa-film admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Featured reels</span></a>
           <a class="admin-nav-sub<?= $activeHomeSlug === 'quality' ? ' active' : '' ?>" href="home_edit.php?s=quality"><i class="fas fa-circle-check admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Why choose</span></a>
           <a class="admin-nav-sub<?= $activeHomeSlug === 'sale_banners' ? ' active' : '' ?>" href="home_edit.php?s=sale_banners"><i class="fas fa-tags admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Sale banners</span></a>
+          <a class="admin-nav-sub<?= $activeHomeSlug === 'offer_banners' ? ' active' : '' ?>" href="home_edit.php?s=offer_banners"><i class="fas fa-images admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Offer banners</span></a>
           <a class="admin-nav-sub<?= $activeHomeSlug === 'product_ctg' ? ' active' : '' ?>" href="home_edit.php?s=product_ctg"><i class="fas fa-gift admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Offers block</span></a>
           <a class="admin-nav-sub<?= $activeHomeSlug === 'services' ? ' active' : '' ?>" href="home_edit.php?s=services"><i class="fas fa-truck-fast admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Service row</span></a>
           <a class="admin-nav-sub<?= $activeHomeSlug === 'instagram' ? ' active' : '' ?>" href="home_edit.php?s=instagram"><i class="fab fa-instagram admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Instagram</span></a>
+          <a class="admin-nav-sub<?= $activeHomeSlug === 'gallery_strip' ? ' active' : '' ?>" href="home_edit.php?s=gallery_strip"><i class="fas fa-newspaper admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Gallery / blog strip</span></a>
+          <a class="admin-nav-sub<?= $stripSidebarAddActive ? ' active' : '' ?>" href="home_edit.php?s=gallery_strip_sidebar&amp;sub=add"><i class="fas fa-plus admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Strip sidebar — Add</span></a>
+          <a class="admin-nav-sub<?= ($stripSidebarViewActive || $stripSidebarListActive) ? ' active' : '' ?>" href="gallery_strip_sidebar_view.php"><i class="fas fa-eye admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Strip sidebar — View</span></a>
         </div>
       </details>
 
@@ -93,8 +102,8 @@ $settingsNavOpen = ($activeNav === 'company' || $activeNav === 'change_password'
           <i class="fas fa-chevron-down admin-nav-dropdown-chevron" aria-hidden="true"></i>
         </summary>
         <div class="admin-nav-dropdown-body">
-          <a class="admin-nav-sub<?= $activeHomeSlug === 'gallery' ? ' active' : '' ?>" href="home_edit.php?s=gallery"><i class="fas fa-plus admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Add</span></a>
-          <a class="admin-nav-sub" href="../index.php#gallery" target="_blank" rel="noopener"><i class="fas fa-eye admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">View</span></a>
+          <a class="admin-nav-sub<?= $galleryOnAddForm ? ' active' : '' ?>" href="home_edit.php?s=gallery&amp;sub=add"><i class="fas fa-plus admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">Add</span></a>
+          <a class="admin-nav-sub<?= $activeNav === 'gallery' && !$galleryOnAddForm ? ' active' : '' ?>" href="gallery_view.php"><i class="fas fa-eye admin-nav-sub-icon" aria-hidden="true"></i><span class="admin-nav-sub-label">View</span></a>
         </div>
       </details>
 

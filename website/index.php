@@ -5,9 +5,12 @@ $home = fruitwala_home_load($conn);
 $heroSlides = fruitwala_home_hero_slides($conn);
 $homeReels = fruitwala_home_reels($conn);
 $saleBanners = fruitwala_home_sale_banners($conn);
+$offerBanners = fruitwala_home_offer_banners($conn);
 $homeServices = fruitwala_home_services($conn);
 $igTiles = fruitwala_home_instagram_tiles($conn);
 $homeTestimonials = fruitwala_home_testimonials($conn);
+$galleryItems = fruitwala_home_gallery_items($conn);
+$galleryStripSidebarRows = fruitwala_home_gallery_strip_sidebar_rows($conn);
 ?>
 
 <!-- //////////////////////////////////////// HEADER END //////////////////////////////// -->
@@ -20,47 +23,26 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
     <div class="banner4_section_wrap">
         <div class="container">
             <div class="row slide_content slideshow6_slider mx-3" data-slick='{"dots": false}'>
-
-                <?php foreach ($heroSlides as $slide): ?>
+                <?php
+                $bannerGalleryItems = $galleryItems;
+                if ($bannerGalleryItems === []) {
+                    foreach ($heroSlides as $slide) {
+                        $bannerGalleryItems[] = [
+                            'title' => (string) ($slide['kicker'] ?? ''),
+                            'image' => (string) ($slide['image'] ?? ''),
+                        ];
+                    }
+                }
+                ?>
+                <?php foreach ($bannerGalleryItems as $item): ?>
                 <div class="slide_item_content d-flex justify-content-center align-items-center">
-                    <div class="col-lg-6">
-                        <div class="banner4_sub_cont position-relative">
-                            <h6 class="text-white text-uppercase position-absolute"><?= fruitwala_home_slide_h($slide, 'kicker') ?></h6>
-                            <img class="banner4_sub_bg mb-4" src="assets/images/shapes/shape2.png" alt="image_not_found">
-                        </div>
-
-                        <div class="banner4_title text-effect">
-                           <h1>
-                              <font class="text-effect">
-                                 <span>F</span><span>r</span><span>u</span><span>i</span><span>t</span>
-                                 <span>w</span><span>a</span><span>l</span><span>a</span>
-                              </font>
-                              Breakfast
-                           </h1>
-                        </div>
-
-
-                        <p class="banner4_desc">
-                            <?= nl2br(fruitwala_home_slide_h($slide, 'description')) ?>
-                        </p>
-
-                        <div class="banner4_btn">
-                            <a href="<?= fruitwala_home_slide_h($slide, 'btn_url') ?>">
-                                <button type="button" class="btn custom_btn load_more_1 rounded-pill px-5 py-3 text-white">
-                                    <?= fruitwala_home_slide_h($slide, 'btn_text') ?> <i class="fas fa-long-arrow-alt-right"></i>
-                                </button>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-6">
-                        <div class="banner10_img img_moving_anim1">
-                            <img src="<?= fruitwala_home_slide_h($slide, 'image') ?>" alt="image_not_found">
+                    <div class="col-12">
+                        <div class="banner10_img img_moving_anim1 text-center">
+                            <img src="<?= htmlspecialchars((string) ($item['image'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars((string) ($item['title'] ?? 'Gallery image'), ENT_QUOTES, 'UTF-8') ?>">
                         </div>
                     </div>
                 </div>
                 <?php endforeach; ?>
-
             </div>
         </div>
 
@@ -110,7 +92,7 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
          <!-- quality section start -->
          <section class="quality_section position-relative" data-aos="fade-up" data-aos-duration="2000">
    <div class="quality_section_wrap sec_ptb_100"
-      style="background-image: url(assets/images/quality/qlty1.png)">
+      style="background-image: url('<?= fruitwala_home_h($home, 'quality_wrap', 'bg_image') ?>')">
       <div class="container">
 
          <!-- Top Heading -->
@@ -145,7 +127,7 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
                         </div>
                      </div>
                      <div class="quality_img bg-white ms-4">
-                        <img src="<?= fruitwala_home_h($home, 'quality_l1', 'image') ?>" alt="qlty5">
+                        <img src="<?= fruitwala_home_h($home, 'quality_l1', 'image') ?>" alt="<?= fruitwala_home_img_alt($home, 'quality_l1', 'title') ?>">
                      </div>
                   </div>
 
@@ -159,7 +141,7 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
                         </div>
                      </div>
                      <div class="quality_img bg-white ms-4">
-                        <img src="<?= fruitwala_home_h($home, 'quality_l2', 'image') ?>" alt="qlty6">
+                        <img src="<?= fruitwala_home_h($home, 'quality_l2', 'image') ?>" alt="<?= fruitwala_home_img_alt($home, 'quality_l2', 'title') ?>">
                      </div>
                   </div>
 
@@ -173,7 +155,7 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
                         </div>
                      </div>
                      <div class="quality_img bg-white ms-4">
-                        <img src="<?= fruitwala_home_h($home, 'quality_l3', 'image') ?>" alt="qlty7">
+                        <img src="<?= fruitwala_home_h($home, 'quality_l3', 'image') ?>" alt="<?= fruitwala_home_img_alt($home, 'quality_l3', 'title') ?>">
                      </div>
                   </div>
 
@@ -202,7 +184,7 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
 
                   <div class="quality_content d-flex justify-content-center align-items-start ps-4" data-aos="fade-left" data-aos-duration="800">
                      <div class="quality_img bg-white me-4">
-                        <img src="<?= fruitwala_home_h($home, 'quality_r1', 'image') ?>" alt="qlty8">
+                        <img src="<?= fruitwala_home_h($home, 'quality_r1', 'image') ?>" alt="<?= fruitwala_home_img_alt($home, 'quality_r1', 'title') ?>">
                      </div>
                      <div class="quality_text">
                         <div class="quality_title">
@@ -216,7 +198,7 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
 
                   <div class="quality_content d-flex justify-content-center align-items-start my-4" data-aos="fade-left" data-aos-duration="1000">
                      <div class="quality_img bg-white me-4">
-                        <img src="<?= fruitwala_home_h($home, 'quality_r2', 'image') ?>" alt="qlty9">
+                        <img src="<?= fruitwala_home_h($home, 'quality_r2', 'image') ?>" alt="<?= fruitwala_home_img_alt($home, 'quality_r2', 'title') ?>">
                      </div>
                      <div class="quality_text">
                         <div class="quality_title">
@@ -230,7 +212,7 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
 
                   <div class="quality_content d-flex justify-content-center align-items-start ps-4" data-aos="fade-left" data-aos-duration="1200">
                      <div class="quality_img bg-white me-4">
-                        <img src="<?= fruitwala_home_h($home, 'quality_r3', 'image') ?>" alt="qlty10">
+                        <img src="<?= fruitwala_home_h($home, 'quality_r3', 'image') ?>" alt="<?= fruitwala_home_img_alt($home, 'quality_r3', 'title') ?>">
                      </div>
                      <div class="quality_text">
                         <div class="quality_title">
@@ -259,30 +241,16 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
                 <div class="sale3_sec_wrap">
                     <div class="container">
                         <div class="row gx-3">
+                            <?php foreach ($offerBanners as $idx => $offerBanner): ?>
                             <div class="col-lg-6">
-                                <div class="sale3_content d-flex flex-column justify-content-center align-items-center overflow-hidden sec_space_xs_70"
-                                    style="background-image: url(assets/images/3.png); height: 300px;" data-aos="fade-right"
-                                    data-aos-duration="1000">
-                                    <!-- <h3 class="sale3_title">.</h3>
-                                    <span class="sale3_subtitle text-uppercase">.</span> -->
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <div class="sale3_content2 sec_space_xs_70"
-                                    style="background-image: url(assets/images/4.png); height: 300px;" data-aos="fade-left"
-                                    data-aos-duration="1000">
-                                    <div class="row">
-                                        <div class="col-6"></div>
-                                        <div class="col-6">
-                                            <div class="sale3_text">
-                                                <!-- <h3 class="sale3_title">Sale 68% Off All Fruite Products</h3>
-                                                <span class="sale3_subtitle text-uppercase">tast of nature</span> -->
-                                            </div>
-                                        </div>
+                                <a href="<?= fruitwala_home_row_h($offerBanner, 'link') ?>" class="d-block">
+                                    <div class="<?= $idx % 2 === 0 ? 'sale3_content d-flex flex-column justify-content-center align-items-center overflow-hidden' : 'sale3_content2' ?> sec_space_xs_70"
+                                        style="background-image: url('<?= fruitwala_home_row_h($offerBanner, 'image') ?>'); height: 300px;"
+                                        data-aos="<?= $idx % 2 === 0 ? 'fade-right' : 'fade-left' ?>" data-aos-duration="1000">
                                     </div>
-
-                                </div>
+                                </a>
                             </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
                 </div>
@@ -302,25 +270,32 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
                     <div class="sale_slider_content slideshow2_slider position-relative overflow-hidden"
                         data-slick='{"dots": false}'>
 
-                        <!-- Slide 1 -->
-                        <a href="#!">
-                            <div class="sale_item_content position-relative" data-aos="fade-up" data-aos-duration="1000">
-                                <div class="sale_item position-relative">
-                                    <img src="assets/images/18.webp" alt="image_not_found">
+                        <?php if ($galleryItems !== []): ?>
+                            <?php foreach ($galleryItems as $galleryItem): ?>
+                                <a href="javascript:void(0);">
+                                    <div class="sale_item_content position-relative" data-aos="fade-up" data-aos-duration="1000">
+                                        <div class="sale_item position-relative">
+                                            <img src="<?= htmlspecialchars((string) ($galleryItem['image'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars((string) ($galleryItem['title'] ?? 'Gallery image'), ENT_QUOTES, 'UTF-8') ?>">
+                                        </div>
+                                    </div>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <a href="#!">
+                                <div class="sale_item_content position-relative" data-aos="fade-up" data-aos-duration="1000">
+                                    <div class="sale_item position-relative">
+                                        <img src="assets/images/18.webp" alt="image_not_found">
+                                    </div>
                                 </div>
-                            </div>
-                        </a>
-
-                        
-
-                        <!-- Slide 3 -->
-                        <a href="javascript:void(0);">
-                            <div class="sale_item_content position-relative">
-                                <div class="sale_item position-relative">
-                                    <img src="assets/images/16.jpg" alt="image_not_found">
+                            </a>
+                            <a href="javascript:void(0);">
+                                <div class="sale_item_content position-relative">
+                                    <div class="sale_item position-relative">
+                                        <img src="assets/images/16.jpg" alt="image_not_found">
+                                    </div>
                                 </div>
-                            </div>
-                        </a>
+                            </a>
+                        <?php endif; ?>
 
                     </div>
 
@@ -505,7 +480,7 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
          <section id="gallery" class="gallery_section sec_space_xxs_50 position-relative" data-aos="fade-up"
    data-aos-duration="2000">
    <div class="gallery_content_wrap inner_sec_sm"
-      style="background-image: url(assets/images/gallery/gallery1.png)">
+      style="background-image: url('<?= fruitwala_home_h($home, 'gallery_wrap', 'bg_image') ?>')">
       <div class="container">
          <div class="row align-items-center">
 
@@ -557,30 +532,30 @@ $homeTestimonials = fruitwala_home_testimonials($conn);
                </div>
             </div>
 
-            <!-- Right Side List -->
+            <!-- Right side list (admin: Strip sidebar posts + datatable) -->
             <div class="col-md-6 col-lg-4">
-               <div class="gallery_end_content px-4 py-5 overflow-auto bg-white">
-
-                  <?php for ($gi = 1; $gi <= 4; $gi++): ?>
-                  <?php $gsk = 'gallery_side_' . $gi; ?>
-                  <div class="gallery_end_content_item<?= $gi < 4 ? ' mb-5' : '' ?> d-flex align-items-center">
+               <div class="gallery_end_content gallery_strip_sidebar_list px-4 py-5 overflow-auto bg-white">
+                  <?php
+                  $sidebarCount = count($galleryStripSidebarRows);
+                  foreach ($galleryStripSidebarRows as $si => $sbRow):
+                      ?>
+                  <div class="gallery_end_content_item<?= $si < $sidebarCount - 1 ? ' mb-5' : '' ?> d-flex align-items-start">
                      <div class="gallery_end_thumb me-3">
-                        <img src="<?= fruitwala_home_h($home, $gsk, 'thumb') ?>" alt="image_not_found">
+                        <img src="<?= htmlspecialchars((string) ($sbRow['thumb'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars((string) ($sbRow['title'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                      </div>
                      <div class="gallery_end_inner_content">
-                        <a href="<?= fruitwala_home_h($home, $gsk, 'link') ?>"><h4><?= fruitwala_home_h($home, $gsk, 'title') ?></h4></a>
+                        <a href="<?= htmlspecialchars((string) ($sbRow['link'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>"><h4><?= htmlspecialchars((string) ($sbRow['title'] ?? ''), ENT_QUOTES, 'UTF-8') ?></h4></a>
                         <div class="gallery_end_author_content d-flex">
                            <div class="gallery_end_author_title pe-2">
-                              <span><i class="far fa-user pe-1"></i> <?= fruitwala_home_h($home, $gsk, 'meta1') ?></span>
+                              <span><i class="far fa-user pe-1"></i> <?= htmlspecialchars((string) ($sbRow['meta1'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
                            </div>
                            <div class="gallery_end_author_time">
-                              <span><i class="far fa-clock pe-1"></i> <?= fruitwala_home_h($home, $gsk, 'meta2') ?></span>
+                              <span><i class="far fa-clock pe-1"></i> <?= htmlspecialchars((string) ($sbRow['meta2'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
                            </div>
                         </div>
                      </div>
                   </div>
-                  <?php endfor; ?>
-
+                  <?php endforeach; ?>
                </div>
             </div>
 

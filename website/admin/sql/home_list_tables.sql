@@ -25,6 +25,17 @@ CREATE TABLE IF NOT EXISTS `home_sale_banners` (
   KEY `idx_home_sale_banners_sort` (`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `home_offer_banners` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `sort_order` int NOT NULL DEFAULT 0,
+  `image` varchar(255) NOT NULL DEFAULT '',
+  `link` varchar(255) NOT NULL DEFAULT '',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_home_offer_banners_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `home_services` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `sort_order` int NOT NULL DEFAULT 0,
@@ -60,4 +71,29 @@ CREATE TABLE IF NOT EXISTS `home_testimonials` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_home_testimonials_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `home_gallery_items` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `sort_order` int NOT NULL DEFAULT 0,
+  `title` varchar(255) NOT NULL DEFAULT '',
+  `image` varchar(255) NOT NULL DEFAULT '',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_home_gallery_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `home_gallery_strip_sidebar` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `sort_order` int NOT NULL DEFAULT 0,
+  `thumb` varchar(255) NOT NULL DEFAULT '',
+  `title` varchar(500) NOT NULL DEFAULT '',
+  `meta1` varchar(255) NOT NULL DEFAULT '',
+  `meta2` varchar(255) NOT NULL DEFAULT '',
+  `link` varchar(512) NOT NULL DEFAULT '',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_home_strip_sidebar_sort` (`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

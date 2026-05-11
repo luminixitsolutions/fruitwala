@@ -140,3 +140,13 @@ function fruitwala_company_profile_url_or_hash(string $url): string
 
     return $t !== '' ? $t : '#';
 }
+
+/**
+ * Build a tel: href from a human-readable phone (digits only, keeps leading country code).
+ */
+function fruitwala_company_profile_tel_href(string $phone): string
+{
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+    return $digits !== '' ? 'tel:' . $digits : '#';
+}

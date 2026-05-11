@@ -63,6 +63,24 @@ function fruitwala_home_title_html(array $home, string $sectionKey, string $fiel
 }
 
 /**
+ * Plain-text snippet for img alt (strips markup from a home field).
+ *
+ * @param array<string, array<string, string>> $home
+ */
+function fruitwala_home_img_alt(array $home, string $sectionKey, string $fieldKey): string
+{
+    $v = strip_tags((string) ($home[$sectionKey][$fieldKey] ?? ''));
+    $v = preg_replace('/\s+/u', ' ', trim($v)) ?? '';
+    if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($v, 'UTF-8') > 140) {
+        $v = mb_substr($v, 0, 137, 'UTF-8') . '…';
+    } elseif (strlen($v) > 140) {
+        $v = substr($v, 0, 137) . '...';
+    }
+
+    return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+}
+
+/**
  * Ensure `home_hero_slides` exists (same SQL as admin install).
  */
 function fruitwala_home_ensure_hero_slides_table(mysqli $conn): bool
@@ -86,7 +104,41 @@ function fruitwala_home_ensure_hero_slides_table(mysqli $conn): bool
         }
     }
     $done = true;
+    fruitwala_home_ensure_hero_slides_headline_columns($conn);
+
     return true;
+}
+
+/**
+ * Add headline columns to `home_hero_slides` when missing (existing installs).
+ */
+function fruitwala_home_ensure_hero_slides_headline_columns(mysqli $conn): void
+{
+    $t = mysqli_query($conn, "SHOW TABLES LIKE 'home_hero_slides'");
+    if (!$t || mysqli_num_rows($t) === 0) {
+        if ($t) {
+            mysqli_free_result($t);
+        }
+
+        return;
+    }
+    mysqli_free_result($t);
+
+    $c1 = mysqli_query($conn, "SHOW COLUMNS FROM `home_hero_slides` LIKE 'headline_main'");
+    if ($c1 && mysqli_num_rows($c1) === 0) {
+        mysqli_query($conn, 'ALTER TABLE `home_hero_slides` ADD COLUMN `headline_main` varchar(180) NOT NULL DEFAULT \'\' AFTER `kicker`');
+    }
+    if ($c1) {
+        mysqli_free_result($c1);
+    }
+
+    $c2 = mysqli_query($conn, "SHOW COLUMNS FROM `home_hero_slides` LIKE 'headline_sub'");
+    if ($c2 && mysqli_num_rows($c2) === 0) {
+        mysqli_query($conn, 'ALTER TABLE `home_hero_slides` ADD COLUMN `headline_sub` varchar(180) NOT NULL DEFAULT \'\' AFTER `headline_main`');
+    }
+    if ($c2) {
+        mysqli_free_result($c2);
+    }
 }
 
 /**
@@ -138,7 +190,7 @@ function fruitwala_home_maybe_migrate_hero_slides(mysqli $conn): void
 }
 
 /**
- * @return list<array{id: int|string, sort_order: int, kicker: string, description: string, btn_text: string, btn_url: string, image: string}>
+ * @return list<array{id: int|string, sort_order: int, kicker: string, headline_main: string, headline_sub: string, description: string, btn_text: string, btn_url: string, image: string}>
  */
 function fruitwala_home_hero_slides(mysqli $conn): array
 {
@@ -147,21 +199,29 @@ function fruitwala_home_hero_slides(mysqli $conn): array
     }
     fruitwala_home_maybe_migrate_hero_slides($conn);
     $out = [];
-    $sql = 'SELECT id, sort_order, kicker, description, btn_text, btn_url, image FROM home_hero_slides ORDER BY sort_order ASC, id ASC';
-    if ($res = mysqli_query($conn, $sql)) {
-        while ($row = mysqli_fetch_assoc($res)) {
-            $out[] = [
-                'id' => (int) $row['id'],
-                'sort_order' => (int) $row['sort_order'],
-                'kicker' => (string) $row['kicker'],
-                'description' => (string) $row['description'],
-                'btn_text' => (string) $row['btn_text'],
-                'btn_url' => (string) $row['btn_url'],
-                'image' => (string) $row['image'],
-            ];
-        }
-        mysqli_free_result($res);
+    $sql = 'SELECT id, sort_order, kicker, headline_main, headline_sub, description, btn_text, btn_url, image FROM home_hero_slides ORDER BY sort_order ASC, id ASC';
+    $res = mysqli_query($conn, $sql);
+    if (!$res) {
+        return fruitwala_home_hero_slides_fallback();
     }
+    while ($row = mysqli_fetch_assoc($res)) {
+        $out[] = [
+            'id' => (int) $row['id'],
+            'sort_order' => (int) $row['sort_order'],
+            'kicker' => (string) $row['kicker'],
+            'headline_main' => (string) ($row['headline_main'] ?? ''),
+            'headline_sub' => (string) ($row['headline_sub'] ?? ''),
+            'description' => (string) $row['description'],
+            'btn_text' => (string) $row['btn_text'],
+            'btn_url' => (string) $row['btn_url'],
+            'image' => (string) $row['image'],
+        ];
+    }
+    mysqli_free_result($res);
+    if ($out === []) {
+        return fruitwala_home_hero_slides_fallback();
+    }
+
     return $out;
 }
 
@@ -183,6 +243,8 @@ function fruitwala_home_hero_slides_fallback(): array
             'id' => $i,
             'sort_order' => $sort,
             'kicker' => (string) ($h['kicker'] ?? ''),
+            'headline_main' => '',
+            'headline_sub' => '',
             'description' => (string) ($h['description'] ?? ''),
             'btn_text' => (string) ($h['btn_text'] ?? ''),
             'btn_url' => (string) ($h['btn_url'] ?? ''),
@@ -198,6 +260,38 @@ function fruitwala_home_slide_h(array $slide, string $key): string
     $v = $slide[$key] ?? '';
 
     return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+}
+
+function fruitwala_home_slide_headline_main_word(array $slide): string
+{
+    $v = trim((string) ($slide['headline_main'] ?? ''));
+
+    return $v !== '' ? $v : 'Fruitwala';
+}
+
+/**
+ * Letter spans for the animated hero title (UTF-8 safe).
+ */
+function fruitwala_home_slide_headline_main_chars_html(array $slide): string
+{
+    $word = fruitwala_home_slide_headline_main_word($slide);
+    $chars = preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY);
+    if ($chars === false || $chars === []) {
+        $chars = str_split($word);
+    }
+    $out = '';
+    foreach ($chars as $ch) {
+        $out .= '<span>' . htmlspecialchars($ch, ENT_QUOTES, 'UTF-8') . '</span>';
+    }
+
+    return $out;
+}
+
+function fruitwala_home_slide_headline_sub_h(array $slide): string
+{
+    $v = trim((string) ($slide['headline_sub'] ?? ''));
+
+    return htmlspecialchars($v !== '' ? $v : 'Breakfast', ENT_QUOTES, 'UTF-8');
 }
 
 /**
@@ -296,17 +390,22 @@ function fruitwala_home_reels(mysqli $conn): array
     fruitwala_home_maybe_migrate_reels($conn);
     $out = [];
     $sql = 'SELECT id, sort_order, video, cover, alt FROM home_reels ORDER BY sort_order ASC, id ASC';
-    if ($res = mysqli_query($conn, $sql)) {
-        while ($row = mysqli_fetch_assoc($res)) {
-            $out[] = [
-                'id' => (int) $row['id'],
-                'sort_order' => (int) $row['sort_order'],
-                'video' => (string) $row['video'],
-                'cover' => (string) $row['cover'],
-                'alt' => (string) $row['alt'],
-            ];
-        }
-        mysqli_free_result($res);
+    $res = mysqli_query($conn, $sql);
+    if (!$res) {
+        return fruitwala_home_reels_fallback($conn);
+    }
+    while ($row = mysqli_fetch_assoc($res)) {
+        $out[] = [
+            'id' => (int) $row['id'],
+            'sort_order' => (int) $row['sort_order'],
+            'video' => (string) $row['video'],
+            'cover' => (string) $row['cover'],
+            'alt' => (string) $row['alt'],
+        ];
+    }
+    mysqli_free_result($res);
+    if ($out === []) {
+        return fruitwala_home_reels_fallback($conn);
     }
 
     return $out;
@@ -426,6 +525,100 @@ function fruitwala_home_sale_banners_fallback(mysqli $conn): array
             'subtitle' => (string) ($h['subtitle'] ?? ''),
             'image' => (string) ($h['image'] ?? ''),
             'link' => (string) ($h['link'] ?? ''),
+        ];
+        $sort += 10;
+    }
+
+    return $out;
+}
+
+function fruitwala_home_maybe_migrate_offer_banners(mysqli $conn): void
+{
+    static $ran = false;
+    if ($ran) {
+        return;
+    }
+    if (!fruitwala_home_ensure_home_list_tables($conn)) {
+        return;
+    }
+    $chk = mysqli_query($conn, 'SELECT COUNT(*) AS c FROM home_offer_banners');
+    if (!$chk) {
+        return;
+    }
+    $row = mysqli_fetch_assoc($chk);
+    mysqli_free_result($chk);
+    if ((int) ($row['c'] ?? 0) > 0) {
+        $ran = true;
+
+        return;
+    }
+    $home = fruitwala_home_load($conn);
+    $stmt = mysqli_prepare(
+        $conn,
+        'INSERT INTO home_offer_banners (sort_order, image, link) VALUES (?,?,?)'
+    );
+    if (!$stmt) {
+        return;
+    }
+    $sort = 0;
+    foreach ([1, 2] as $i) {
+        $sk = 'sale_sm_' . $i;
+        $h = $home[$sk] ?? [];
+        $image = (string) ($h['image'] ?? '');
+        $link = (string) ($h['link'] ?? '#!');
+        $sort += 10;
+        mysqli_stmt_bind_param($stmt, 'iss', $sort, $image, $link);
+        mysqli_stmt_execute($stmt);
+    }
+    mysqli_stmt_close($stmt);
+    $ran = true;
+}
+
+/**
+ * @return list<array{id: int, sort_order: int, image: string, link: string}>
+ */
+function fruitwala_home_offer_banners(mysqli $conn): array
+{
+    if (!fruitwala_home_ensure_home_list_tables($conn)) {
+        return fruitwala_home_offer_banners_fallback($conn);
+    }
+    fruitwala_home_maybe_migrate_offer_banners($conn);
+    $out = [];
+    $sql = 'SELECT id, sort_order, image, link FROM home_offer_banners ORDER BY sort_order ASC, id ASC';
+    if ($res = mysqli_query($conn, $sql)) {
+        while ($row = mysqli_fetch_assoc($res)) {
+            $out[] = [
+                'id' => (int) $row['id'],
+                'sort_order' => (int) $row['sort_order'],
+                'image' => (string) $row['image'],
+                'link' => (string) $row['link'],
+            ];
+        }
+        mysqli_free_result($res);
+    }
+    if ($out === []) {
+        return fruitwala_home_offer_banners_fallback($conn);
+    }
+
+    return $out;
+}
+
+/**
+ * @return list<array<string, int|string>>
+ */
+function fruitwala_home_offer_banners_fallback(mysqli $conn): array
+{
+    $home = fruitwala_home_load($conn);
+    $out = [];
+    $sort = 0;
+    foreach ([1, 2] as $i) {
+        $sk = 'sale_sm_' . $i;
+        $h = $home[$sk] ?? [];
+        $out[] = [
+            'id' => $i,
+            'sort_order' => $sort,
+            'image' => (string) ($h['image'] ?? ''),
+            'link' => (string) ($h['link'] ?? '#!'),
         ];
         $sort += 10;
     }
@@ -711,6 +904,206 @@ function fruitwala_home_testimonials_fallback(mysqli $conn): array
             'body' => (string) ($h['body'] ?? ''),
             'author' => (string) ($h['author'] ?? ''),
             'image' => (string) ($h['image'] ?? ''),
+        ];
+        $sort += 10;
+    }
+
+    return $out;
+}
+
+function fruitwala_home_maybe_migrate_gallery_items(mysqli $conn): void
+{
+    static $ran = false;
+    if ($ran) {
+        return;
+    }
+    if (!fruitwala_home_ensure_home_list_tables($conn)) {
+        return;
+    }
+    $chk = mysqli_query($conn, 'SELECT COUNT(*) AS c FROM home_gallery_items');
+    if (!$chk) {
+        return;
+    }
+    $row = mysqli_fetch_assoc($chk);
+    mysqli_free_result($chk);
+    if ((int) ($row['c'] ?? 0) > 0) {
+        $ran = true;
+
+        return;
+    }
+    $home = fruitwala_home_load($conn);
+    $stmt = mysqli_prepare(
+        $conn,
+        'INSERT INTO home_gallery_items (sort_order, title, image) VALUES (?,?,?)'
+    );
+    if (!$stmt) {
+        return;
+    }
+    $sort = 0;
+    foreach ([1, 2, 3, 4] as $i) {
+        $sk = 'gallery_side_' . $i;
+        $h = $home[$sk] ?? [];
+        $title = (string) ($h['title'] ?? '');
+        $image = (string) ($h['thumb'] ?? '');
+        $sort += 10;
+        mysqli_stmt_bind_param($stmt, 'iss', $sort, $title, $image);
+        mysqli_stmt_execute($stmt);
+    }
+    mysqli_stmt_close($stmt);
+    $ran = true;
+}
+
+/**
+ * @return list<array{id: int, sort_order: int, title: string, image: string}>
+ */
+function fruitwala_home_gallery_items(mysqli $conn): array
+{
+    if (!fruitwala_home_ensure_home_list_tables($conn)) {
+        return fruitwala_home_gallery_items_fallback($conn);
+    }
+    fruitwala_home_maybe_migrate_gallery_items($conn);
+    $out = [];
+    $sql = 'SELECT id, sort_order, title, image FROM home_gallery_items ORDER BY sort_order ASC, id ASC';
+    if ($res = mysqli_query($conn, $sql)) {
+        while ($row = mysqli_fetch_assoc($res)) {
+            $out[] = [
+                'id' => (int) $row['id'],
+                'sort_order' => (int) $row['sort_order'],
+                'title' => (string) $row['title'],
+                'image' => (string) $row['image'],
+            ];
+        }
+        mysqli_free_result($res);
+    }
+    if ($out === []) {
+        return fruitwala_home_gallery_items_fallback($conn);
+    }
+
+    return $out;
+}
+
+/**
+ * @return list<array<string, int|string>>
+ */
+function fruitwala_home_gallery_items_fallback(mysqli $conn): array
+{
+    $home = fruitwala_home_load($conn);
+    $out = [];
+    $sort = 0;
+    foreach ([1, 2, 3, 4] as $i) {
+        $sk = 'gallery_side_' . $i;
+        $h = $home[$sk] ?? [];
+        $out[] = [
+            'id' => $i,
+            'sort_order' => $sort,
+            'title' => (string) ($h['title'] ?? ''),
+            'image' => (string) ($h['thumb'] ?? ''),
+        ];
+        $sort += 10;
+    }
+
+    return $out;
+}
+
+function fruitwala_home_maybe_migrate_gallery_strip_sidebar_rows(mysqli $conn): void
+{
+    static $ran = false;
+    if ($ran) {
+        return;
+    }
+    if (!fruitwala_home_ensure_home_list_tables($conn)) {
+        return;
+    }
+    $chk = mysqli_query($conn, 'SELECT COUNT(*) AS c FROM home_gallery_strip_sidebar');
+    if (!$chk) {
+        return;
+    }
+    $row = mysqli_fetch_assoc($chk);
+    mysqli_free_result($chk);
+    if ((int) ($row['c'] ?? 0) > 0) {
+        $ran = true;
+
+        return;
+    }
+    $home = fruitwala_home_load($conn);
+    $stmt = mysqli_prepare(
+        $conn,
+        'INSERT INTO home_gallery_strip_sidebar (sort_order, thumb, title, meta1, meta2, link) VALUES (?,?,?,?,?,?)'
+    );
+    if (!$stmt) {
+        return;
+    }
+    $sort = 0;
+    foreach ([1, 2, 3, 4] as $i) {
+        $sk = 'gallery_side_' . $i;
+        $h = $home[$sk] ?? [];
+        $thumb = (string) ($h['thumb'] ?? '');
+        $title = (string) ($h['title'] ?? '');
+        $meta1 = (string) ($h['meta1'] ?? '');
+        $meta2 = (string) ($h['meta2'] ?? '');
+        $link = (string) ($h['link'] ?? '');
+        if ($thumb === '' && $title === '' && $meta1 === '' && $meta2 === '' && $link === '') {
+            continue;
+        }
+        $sort += 10;
+        mysqli_stmt_bind_param($stmt, 'isssss', $sort, $thumb, $title, $meta1, $meta2, $link);
+        mysqli_stmt_execute($stmt);
+    }
+    mysqli_stmt_close($stmt);
+    $ran = true;
+}
+
+/**
+ * @return list<array{id: int, sort_order: int, thumb: string, title: string, meta1: string, meta2: string, link: string}>
+ */
+function fruitwala_home_gallery_strip_sidebar_rows(mysqli $conn): array
+{
+    if (!fruitwala_home_ensure_home_list_tables($conn)) {
+        return fruitwala_home_gallery_strip_sidebar_rows_fallback($conn);
+    }
+    fruitwala_home_maybe_migrate_gallery_strip_sidebar_rows($conn);
+    $out = [];
+    $sql = 'SELECT id, sort_order, thumb, title, meta1, meta2, link FROM home_gallery_strip_sidebar ORDER BY sort_order ASC, id ASC';
+    if ($res = mysqli_query($conn, $sql)) {
+        while ($row = mysqli_fetch_assoc($res)) {
+            $out[] = [
+                'id' => (int) $row['id'],
+                'sort_order' => (int) $row['sort_order'],
+                'thumb' => (string) $row['thumb'],
+                'title' => (string) $row['title'],
+                'meta1' => (string) $row['meta1'],
+                'meta2' => (string) $row['meta2'],
+                'link' => (string) $row['link'],
+            ];
+        }
+        mysqli_free_result($res);
+    }
+    if ($out === []) {
+        return fruitwala_home_gallery_strip_sidebar_rows_fallback($conn);
+    }
+
+    return $out;
+}
+
+/**
+ * @return list<array<string, int|string>>
+ */
+function fruitwala_home_gallery_strip_sidebar_rows_fallback(mysqli $conn): array
+{
+    $home = fruitwala_home_load($conn);
+    $out = [];
+    $sort = 0;
+    foreach ([1, 2, 3, 4] as $i) {
+        $sk = 'gallery_side_' . $i;
+        $h = $home[$sk] ?? [];
+        $out[] = [
+            'id' => $i,
+            'sort_order' => $sort,
+            'thumb' => (string) ($h['thumb'] ?? ''),
+            'title' => (string) ($h['title'] ?? ''),
+            'meta1' => (string) ($h['meta1'] ?? ''),
+            'meta2' => (string) ($h['meta2'] ?? ''),
+            'link' => (string) ($h['link'] ?? ''),
         ];
         $sort += 10;
     }

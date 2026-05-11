@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS `home_hero_slides` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `sort_order` int NOT NULL DEFAULT 0,
   `kicker` varchar(255) NOT NULL DEFAULT '',
+  `headline_main` varchar(180) NOT NULL DEFAULT '',
+  `headline_sub` varchar(180) NOT NULL DEFAULT '',
   `description` mediumtext NOT NULL,
   `btn_text` varchar(120) NOT NULL DEFAULT '',
   `btn_url` varchar(255) NOT NULL DEFAULT '',

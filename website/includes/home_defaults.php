@@ -35,6 +35,9 @@ return [
         'cover' => 'assets/videos/reels/cover4.jpg',
         'alt' => 'Fruitwala Reel',
     ],
+    'quality_wrap' => [
+        'bg_image' => 'assets/images/quality/qlty1.png',
+    ],
     'quality_header' => [
         'badge' => 'FRESH • HEALTHY • HYGIENIC',
         'heading' => 'Why Choose Fruitwala Breakfast?',
@@ -124,6 +127,9 @@ return [
         'body' => 'My kids now prefer Fruitwala breakfast boxes over junk snacks. The fruit combinations are colorful, tasty, and perfect for school mornings.',
         'author' => 'Sneha Kulkarni – Homemaker',
         'image' => 'assets/images/testimonials/5.jpg',
+    ],
+    'gallery_wrap' => [
+        'bg_image' => 'assets/images/gallery/gallery1.png',
     ],
     'gallery_left' => [
         'badge' => 'FRESH FROM FRUITWALA',

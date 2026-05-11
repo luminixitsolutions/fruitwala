@@ -604,6 +604,17 @@
       }
     ]
   });
+
+  // Gallery strip sidebar (#gallery) is a static vertical list — never slick.
+  $('#gallery .gallery_end_content').each(function () {
+    var $el = $(this);
+    $el.removeClass('slideshow7_slider');
+    if ($el.hasClass('slick-initialized')) {
+      try {
+        $el.slick('unslick');
+      } catch (e) {}
+    }
+  });
   
   // slick slider-8 start
   $('.slideshow8_slider').slick({

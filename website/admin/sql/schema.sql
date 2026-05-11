@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS `home_hero_slides` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `sort_order` int NOT NULL DEFAULT 0,
   `kicker` varchar(255) NOT NULL DEFAULT '',
+  `headline_main` varchar(180) NOT NULL DEFAULT '',
+  `headline_sub` varchar(180) NOT NULL DEFAULT '',
   `description` mediumtext NOT NULL,
   `btn_text` varchar(120) NOT NULL DEFAULT '',
   `btn_url` varchar(255) NOT NULL DEFAULT '',
@@ -107,6 +109,31 @@ CREATE TABLE IF NOT EXISTS `home_testimonials` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_home_testimonials_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `home_gallery_items` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `sort_order` int NOT NULL DEFAULT 0,
+  `title` varchar(255) NOT NULL DEFAULT '',
+  `image` varchar(255) NOT NULL DEFAULT '',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_home_gallery_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `home_gallery_strip_sidebar` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `sort_order` int NOT NULL DEFAULT 0,
+  `thumb` varchar(255) NOT NULL DEFAULT '',
+  `title` varchar(500) NOT NULL DEFAULT '',
+  `meta1` varchar(255) NOT NULL DEFAULT '',
+  `meta2` varchar(255) NOT NULL DEFAULT '',
+  `link` varchar(512) NOT NULL DEFAULT '',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_home_strip_sidebar_sort` (`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `about_us_content` (

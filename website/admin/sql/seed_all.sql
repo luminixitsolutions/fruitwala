@@ -44,3 +44,6 @@ SELECT `question`, `answer`, `sort_order`, `is_active` FROM (
   UNION ALL SELECT 'Do you deliver on the same day?', 'Same-day delivery is available for orders placed before our daily cut-off time. Please contact us early to confirm availability.', 80, 1
 ) AS `seed_faq_rows`
 WHERE NOT EXISTS (SELECT 1 FROM `faqs` LIMIT 1);
+
+-- Default blog posts for blogs.php: import `blogs_seed.sql` (or run `php website/admin/tools/run_blogs_seed_once.php`).
+-- Default portfolio reels: import `portfolio_items_seed.sql` (or run `php website/admin/tools/run_portfolio_seed_once.php`).

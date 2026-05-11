@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/home_table.php';
 require_once __DIR__ . '/includes/home_edit_sections.php';
+require_once __DIR__ . '/includes/home_edit_list_section.php';
 require_once dirname(__DIR__) . '/includes/home_content.php';
 
 admin_require_login();
@@ -22,9 +23,6 @@ if ($slug === '' || !isset($sections[$slug])) {
 $meta = $sections[$slug];
 $isHeroSlides = !empty($meta['hero_slides_ui']);
 $listType = isset($meta['list_ui']) && is_string($meta['list_ui']) ? $meta['list_ui'] : null;
-if ($listType !== null && $listType !== '') {
-    require_once __DIR__ . '/includes/home_edit_list_section.php';
-}
 
 $flash = '';
 if (!empty($_SESSION['admin_flash'])) {
@@ -35,14 +33,28 @@ if (!empty($_SESSION['admin_flash'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && admin_csrf_verify()) {
     if ($isHeroSlides && isset($_POST['hero_delete_id'])) {
         fruitwala_home_ensure_hero_slides_table($conn);
+        require_once __DIR__ . '/includes/upload_image.php';
         $did = (int) $_POST['hero_delete_id'];
         if ($did > 0) {
+            $oldImg = '';
+            $stSel = mysqli_prepare($conn, 'SELECT image FROM home_hero_slides WHERE id = ? LIMIT 1');
+            if ($stSel) {
+                mysqli_stmt_bind_param($stSel, 'i', $did);
+                mysqli_stmt_execute($stSel);
+                $res = mysqli_stmt_get_result($stSel);
+                $row = $res ? mysqli_fetch_assoc($res) : null;
+                mysqli_stmt_close($stSel);
+                if (is_array($row)) {
+                    $oldImg = (string) ($row['image'] ?? '');
+                }
+            }
             $st = mysqli_prepare($conn, 'DELETE FROM home_hero_slides WHERE id = ? LIMIT 1');
             if ($st) {
                 mysqli_stmt_bind_param($st, 'i', $did);
                 mysqli_stmt_execute($st);
                 mysqli_stmt_close($st);
             }
+            fruitwala_admin_remove_home_hero_slide_image_file($oldImg !== '' ? $oldImg : null);
         }
         $_SESSION['admin_flash'] = 'Slide removed.';
         header('Location: home_edit.php?s=hero');
@@ -51,20 +63,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && admin_csrf_verify()) {
 
     if ($isHeroSlides && isset($_POST['hero_save'])) {
         fruitwala_home_ensure_hero_slides_table($conn);
+        require_once __DIR__ . '/includes/upload_image.php';
         $slideId = (int) ($_POST['slide_id'] ?? 0);
         $kicker = str_replace("\r\n", "\n", trim((string) ($_POST['kicker'] ?? '')));
+        $headlineMain = trim((string) ($_POST['headline_main'] ?? ''));
+        $headlineSub = trim((string) ($_POST['headline_sub'] ?? ''));
         $description = str_replace("\r\n", "\n", trim((string) ($_POST['description'] ?? '')));
         $btnText = trim((string) ($_POST['btn_text'] ?? ''));
         $btnUrl = trim((string) ($_POST['btn_url'] ?? ''));
+        $currentImage = trim((string) ($_POST['hero_image_current'] ?? ''));
         $image = trim((string) ($_POST['image'] ?? ''));
+        $upload = fruitwala_admin_save_home_hero_slide_image_upload();
+        if ($upload['error'] !== null) {
+            $_SESSION['admin_flash'] = $upload['error'];
+            if ($slideId > 0) {
+                header('Location: home_edit.php?s=hero&sub=edit&id=' . $slideId);
+            } else {
+                header('Location: home_edit.php?s=hero&sub=add');
+            }
+            exit;
+        }
+        if ($upload['path'] !== null) {
+            if ($slideId > 0 && $currentImage !== '' && $currentImage !== $upload['path']) {
+                fruitwala_admin_remove_home_hero_slide_image_file($currentImage);
+            }
+            $image = $upload['path'];
+        }
 
         if ($slideId > 0) {
             $st = mysqli_prepare(
                 $conn,
-                'UPDATE home_hero_slides SET kicker = ?, description = ?, btn_text = ?, btn_url = ?, image = ? WHERE id = ? LIMIT 1'
+                'UPDATE home_hero_slides SET kicker = ?, headline_main = ?, headline_sub = ?, description = ?, btn_text = ?, btn_url = ?, image = ? WHERE id = ? LIMIT 1'
             );
             if ($st) {
-                mysqli_stmt_bind_param($st, 'sssssi', $kicker, $description, $btnText, $btnUrl, $image, $slideId);
+                mysqli_stmt_bind_param($st, 'sssssssi', $kicker, $headlineMain, $headlineSub, $description, $btnText, $btnUrl, $image, $slideId);
                 mysqli_stmt_execute($st);
                 mysqli_stmt_close($st);
             }
@@ -78,10 +110,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && admin_csrf_verify()) {
             }
             $st = mysqli_prepare(
                 $conn,
-                'INSERT INTO home_hero_slides (sort_order, kicker, description, btn_text, btn_url, image) VALUES (?,?,?,?,?,?)'
+                'INSERT INTO home_hero_slides (sort_order, kicker, headline_main, headline_sub, description, btn_text, btn_url, image) VALUES (?,?,?,?,?,?,?,?)'
             );
             if ($st) {
-                mysqli_stmt_bind_param($st, 'isssss', $next, $kicker, $description, $btnText, $btnUrl, $image);
+                mysqli_stmt_bind_param($st, 'isssssss', $next, $kicker, $headlineMain, $headlineSub, $description, $btnText, $btnUrl, $image);
                 mysqli_stmt_execute($st);
                 mysqli_stmt_close($st);
             }
@@ -96,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && admin_csrf_verify()) {
     }
 
     if (!$isHeroSlides && !$listType && !empty($meta['blocks'])) {
+        require_once __DIR__ . '/includes/upload_image.php';
         $posted = isset($_POST['f']) && is_array($_POST['f']) ? $_POST['f'] : [];
         $stmt = mysqli_prepare(
             $conn,
@@ -107,8 +140,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && admin_csrf_verify()) {
                 foreach ($block['fields'] as $field) {
                     $sk = (string) $field['section_key'];
                     $fk = (string) $field['field_key'];
-                    $raw = $posted[$sk][$fk] ?? '';
-                    $val = is_string($raw) ? str_replace("\r\n", "\n", trim($raw)) : '';
+                    if (($field['type'] ?? '') === 'image_upload') {
+                        $up = fruitwala_admin_save_home_quality_icon_upload($sk);
+                        if ($up['error'] !== null) {
+                            mysqli_stmt_close($stmt);
+                            $_SESSION['admin_flash'] = $up['error'];
+                            header('Location: home_edit.php?s=' . rawurlencode($slug));
+                            exit;
+                        }
+                        $cur = isset($posted[$sk][$fk]) && is_string($posted[$sk][$fk])
+                            ? trim(str_replace("\r\n", "\n", $posted[$sk][$fk]))
+                            : '';
+                        if ($up['path'] !== null) {
+                            if ($cur !== '' && $cur !== $up['path']) {
+                                fruitwala_admin_remove_home_quality_icon_file($cur);
+                            }
+                            $val = $up['path'];
+                        } else {
+                            $val = $cur;
+                        }
+                    } else {
+                        $raw = $posted[$sk][$fk] ?? '';
+                        $val = is_string($raw) ? str_replace("\r\n", "\n", trim($raw)) : '';
+                    }
                     mysqli_stmt_bind_param($stmt, 'sss', $sk, $fk, $val);
                     mysqli_stmt_execute($stmt);
                 }
@@ -142,6 +196,8 @@ if ($isHeroSlides) {
         $heroForm = [
             'id' => 0,
             'kicker' => '',
+            'headline_main' => '',
+            'headline_sub' => '',
             'description' => '',
             'btn_text' => '',
             'btn_url' => '',
@@ -151,7 +207,7 @@ if ($isHeroSlides) {
         $editIdSafe = (int) $editId;
         $qr = mysqli_query(
             $conn,
-            "SELECT id, kicker, description, btn_text, btn_url, image FROM home_hero_slides WHERE id = {$editIdSafe} LIMIT 1"
+            "SELECT id, kicker, headline_main, headline_sub, description, btn_text, btn_url, image FROM home_hero_slides WHERE id = {$editIdSafe} LIMIT 1"
         );
         if ($qr && ($row = mysqli_fetch_assoc($qr))) {
             $heroForm = $row;
@@ -176,12 +232,18 @@ if ($listType) {
         fruitwala_home_maybe_migrate_reels($conn);
     } elseif ($listType === 'sale_banners') {
         fruitwala_home_maybe_migrate_sale_banners($conn);
+    } elseif ($listType === 'offer_banners') {
+        fruitwala_home_maybe_migrate_offer_banners($conn);
     } elseif ($listType === 'services') {
         fruitwala_home_maybe_migrate_services($conn);
     } elseif ($listType === 'instagram') {
         fruitwala_home_maybe_migrate_instagram_tiles($conn);
     } elseif ($listType === 'testimonials') {
         fruitwala_home_maybe_migrate_testimonials($conn);
+    } elseif ($listType === 'gallery') {
+        fruitwala_home_maybe_migrate_gallery_items($conn);
+    } elseif ($listType === 'gallery_strip_sidebar') {
+        fruitwala_home_maybe_migrate_gallery_strip_sidebar_rows($conn);
     }
     $itemForm = fruitwala_admin_home_list_item_form($conn, $slug, $listType);
 }
@@ -191,6 +253,8 @@ if ($slug === 'testimonials') {
     $activeNav = 'testimonial';
 } elseif ($slug === 'gallery') {
     $activeNav = 'gallery';
+} elseif ($slug === 'gallery_strip_sidebar') {
+    $activeNav = 'gallery_strip_sidebar';
 } else {
     $activeNav = 'home';
 }
@@ -215,10 +279,11 @@ require __DIR__ . '/includes/layout_header.php';
     <p style="margin:0 0 1rem">
       <a class="btn btn-ghost btn-sm" href="home_edit.php?s=hero"><i class="fas fa-arrow-left"></i> Back to slides</a>
     </p>
-    <form method="post" action="home_edit.php?s=hero" class="admin-form">
+    <form method="post" action="home_edit.php?s=hero" class="admin-form" enctype="multipart/form-data">
       <?= admin_csrf_field() ?>
       <input type="hidden" name="hero_save" value="1">
       <input type="hidden" name="slide_id" value="<?= (int) $heroForm['id'] ?>">
+      <input type="hidden" name="hero_image_current" value="<?= htmlspecialchars((string) $heroForm['image'], ENT_QUOTES, 'UTF-8') ?>">
 
       <div class="admin-card" style="margin-bottom:1.25rem">
         <div class="admin-card-header"><?= (int) $heroForm['id'] > 0 ? 'Edit slide' : 'New slide' ?></div>
@@ -226,6 +291,16 @@ require __DIR__ . '/includes/layout_header.php';
           <div class="form-group">
             <label for="hero_kicker">Top line (small heading)</label>
             <input type="text" id="hero_kicker" name="kicker" value="<?= htmlspecialchars((string) $heroForm['kicker'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+          </div>
+          <div class="form-group">
+            <label for="hero_headline_main">Main title (animated letters, e.g. Fruitwala)</label>
+            <input type="text" id="hero_headline_main" name="headline_main" value="<?= htmlspecialchars((string) ($heroForm['headline_main'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px" maxlength="180">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">Leave blank to use “Fruitwala” on the site.</p>
+          </div>
+          <div class="form-group">
+            <label for="hero_headline_sub">Second line (e.g. Breakfast)</label>
+            <input type="text" id="hero_headline_sub" name="headline_sub" value="<?= htmlspecialchars((string) ($heroForm['headline_sub'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px" maxlength="180">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">Leave blank to use “Breakfast” on the site.</p>
           </div>
           <div class="form-group">
             <label for="hero_description">Description</label>
@@ -242,6 +317,26 @@ require __DIR__ . '/includes/layout_header.php';
           <div class="form-group">
             <label for="hero_image">Right image path</label>
             <input type="text" id="hero_image" name="image" value="<?= htmlspecialchars((string) $heroForm['image'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">Relative to the site root (e.g. assets/images/banner/slider1.png), or upload below.</p>
+          </div>
+          <?php
+            $heroImg = (string) ($heroForm['image'] ?? '');
+          if ($heroImg !== '') {
+              $heroPreviewSrc = '../' . ltrim(str_replace('\\', '/', $heroImg), '/');
+              ?>
+          <div class="form-group">
+            <span class="label-like" style="display:block;margin-bottom:0.35rem;font-weight:600;font-size:0.9rem">Current image preview</span>
+            <div style="margin-top:0.25rem">
+              <img src="<?= htmlspecialchars($heroPreviewSrc, ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-height:140px;border-radius:10px;border:1px solid var(--admin-border);vertical-align:middle">
+            </div>
+          </div>
+              <?php
+          }
+          ?>
+          <div class="form-group">
+            <label for="hero_slide_image"><?= (int) $heroForm['id'] > 0 ? 'Replace with upload' : 'Upload image' ?></label>
+            <input type="file" id="hero_slide_image" name="hero_slide_image" accept="image/jpeg,image/png,image/gif,image/webp">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">JPEG, PNG, GIF, or WebP. Max 5 MB. Saved under uploads/home_hero/.</p>
           </div>
         </div>
       </div>
@@ -251,7 +346,7 @@ require __DIR__ . '/includes/layout_header.php';
   <?php else: ?>
     <?php
     $heroList = [];
-    $lq = mysqli_query($conn, 'SELECT id, sort_order, kicker, description, btn_text, btn_url, image FROM home_hero_slides ORDER BY sort_order ASC, id ASC');
+    $lq = mysqli_query($conn, 'SELECT id, sort_order, kicker, headline_main, headline_sub, description, btn_text, btn_url, image FROM home_hero_slides ORDER BY sort_order ASC, id ASC');
     if ($lq) {
         while ($row = mysqli_fetch_assoc($lq)) {
             $heroList[] = $row;
@@ -297,15 +392,7 @@ require __DIR__ . '/includes/layout_header.php';
                   }
                   echo htmlspecialchars($bt, ENT_QUOTES, 'UTF-8');
                 ?></td>
-                <td><code style="font-size:0.8rem"><?php
-                  $im = (string) $row['image'];
-                  if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($im, 'UTF-8') > 48) {
-                      $im = mb_substr($im, 0, 47, 'UTF-8') . '…';
-                  } elseif (strlen($im) > 48) {
-                      $im = substr($im, 0, 45) . '...';
-                  }
-                  echo htmlspecialchars($im, ENT_QUOTES, 'UTF-8');
-                ?></code></td>
+                <td><?php fruitwala_admin_home_list_image_thumb_cell((string) $row['image'], (string) $row['kicker']); ?></td>
                 <td class="hero-dt-col-actions">
                   <div class="hero-dt-actions-inner">
                     <a class="hero-dt-icon-btn hero-dt-icon-btn--edit" href="home_edit.php?s=hero&amp;sub=edit&amp;id=<?= (int) $row['id'] ?>" title="Edit"><i class="fas fa-pen" aria-hidden="true"></i><span class="visually-hidden">Edit</span></a>
@@ -341,7 +428,7 @@ require __DIR__ . '/includes/layout_header.php';
             order: [[0, 'asc']],
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
-            columnDefs: [{ orderable: false, targets: 4 }],
+            columnDefs: [{ orderable: false, targets: [3, 4] }],
             language: {
               lengthMenu: 'Show _MENU_ entries',
               search: 'Search:',
@@ -368,7 +455,7 @@ require __DIR__ . '/includes/layout_header.php';
 
 <?php else: ?>
 
-<form method="post" action="home_edit.php?s=<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>" class="admin-form">
+<form method="post" action="home_edit.php?s=<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>" class="admin-form" enctype="multipart/form-data">
   <?= admin_csrf_field() ?>
 
   <?php foreach ($meta['blocks'] as $block): ?>
@@ -386,6 +473,22 @@ require __DIR__ . '/includes/layout_header.php';
             <label for="<?= htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string) $field['label'], ENT_QUOTES, 'UTF-8') ?></label>
             <?php if (($field['type'] ?? 'text') === 'textarea'): ?>
               <textarea id="<?= htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') ?>" name="f[<?= htmlspecialchars($sk, ENT_QUOTES, 'UTF-8') ?>][<?= htmlspecialchars($fk, ENT_QUOTES, 'UTF-8') ?>]" rows="4" style="width:100%;max-width:640px;padding:0.65rem 0.85rem;border-radius:10px;border:1px solid var(--admin-border);background:var(--admin-surface-2);color:var(--admin-text);font-family:inherit;font-size:0.9rem"><?= htmlspecialchars((string) $cur, ENT_QUOTES, 'UTF-8') ?></textarea>
+            <?php elseif (($field['type'] ?? 'text') === 'image_upload'): ?>
+              <input type="hidden" name="f[<?= htmlspecialchars($sk, ENT_QUOTES, 'UTF-8') ?>][<?= htmlspecialchars($fk, ENT_QUOTES, 'UTF-8') ?>]" value="<?= htmlspecialchars((string) $cur, ENT_QUOTES, 'UTF-8') ?>">
+              <input type="file" id="<?= htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') ?>" name="home_quality_icon[<?= htmlspecialchars($sk, ENT_QUOTES, 'UTF-8') ?>]" accept="image/jpeg,image/png,image/gif,image/webp">
+              <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">JPEG, PNG, GIF, or WebP. Max 5 MB. Files save under uploads/home_quality/.</p>
+              <?php
+                $qImg = (string) $cur;
+              if ($qImg !== '') {
+                  $qPreview = '../' . ltrim(str_replace('\\', '/', $qImg), '/');
+                  ?>
+              <div style="margin-top:0.5rem">
+                <span style="display:block;margin-bottom:0.25rem;font-weight:600;font-size:0.85rem">Current image</span>
+                <img src="<?= htmlspecialchars($qPreview, ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-height:72px;border-radius:8px;border:1px solid var(--admin-border);vertical-align:middle">
+              </div>
+                  <?php
+              }
+              ?>
             <?php else: ?>
               <input type="text" id="<?= htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') ?>" name="f[<?= htmlspecialchars($sk, ENT_QUOTES, 'UTF-8') ?>][<?= htmlspecialchars($fk, ENT_QUOTES, 'UTF-8') ?>]" value="<?= htmlspecialchars((string) $cur, ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
             <?php endif; ?>

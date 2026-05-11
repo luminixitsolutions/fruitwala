@@ -84,7 +84,7 @@ require __DIR__ . '/includes/layout_header.php';
 <?php endif; ?>
 
 <p style="margin:0 0 1rem;color:var(--admin-muted);font-size:0.9rem;max-width:720px">
-  Name, address, phone, and email appear in the site footer (and can be reused elsewhere). Social URLs should include <code>https://</code>.
+  Name, address, phone, and email appear in the site footer and on <strong>contact.php</strong>. Social URLs should include <code>https://</code>.
 </p>
 
 <form method="post" action="company_profile_edit.php" class="admin-form">

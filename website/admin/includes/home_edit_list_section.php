@@ -52,23 +52,55 @@ function fruitwala_admin_try_home_list_post(mysqli $conn, string $slug, string $
     if ($listType === 'reels') {
         if (isset($_POST['reel_delete_id'])) {
             fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
             $did = (int) $_POST['reel_delete_id'];
             if ($did > 0) {
+                $oldCover = '';
+                $stSel = mysqli_prepare($conn, 'SELECT cover FROM home_reels WHERE id = ? LIMIT 1');
+                if ($stSel) {
+                    mysqli_stmt_bind_param($stSel, 'i', $did);
+                    mysqli_stmt_execute($stSel);
+                    $res = mysqli_stmt_get_result($stSel);
+                    $row = $res ? mysqli_fetch_assoc($res) : null;
+                    mysqli_stmt_close($stSel);
+                    if (is_array($row)) {
+                        $oldCover = (string) ($row['cover'] ?? '');
+                    }
+                }
                 $st = mysqli_prepare($conn, 'DELETE FROM home_reels WHERE id = ? LIMIT 1');
                 if ($st) {
                     mysqli_stmt_bind_param($st, 'i', $did);
                     mysqli_stmt_execute($st);
                     mysqli_stmt_close($st);
                 }
+                fruitwala_admin_remove_home_reel_cover_file($oldCover !== '' ? $oldCover : null);
             }
             fruitwala_admin_home_list_redirect($slug, 'Reel removed.');
         }
         if (isset($_POST['reel_save'])) {
             fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
             $rowId = (int) ($_POST['reel_row_id'] ?? 0);
             $video = trim((string) ($_POST['reel_video'] ?? ''));
+            $currentCover = trim((string) ($_POST['reel_cover_current'] ?? ''));
             $cover = trim((string) ($_POST['reel_cover'] ?? ''));
             $alt = trim((string) ($_POST['reel_alt'] ?? ''));
+            $upload = fruitwala_admin_save_home_reel_cover_upload();
+            if ($upload['error'] !== null) {
+                $_SESSION['admin_flash'] = $upload['error'];
+                if ($rowId > 0) {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=edit&id=' . $rowId);
+                } else {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=add');
+                }
+                exit;
+            }
+            if ($upload['path'] !== null) {
+                if ($rowId > 0 && $currentCover !== '' && $currentCover !== $upload['path']) {
+                    fruitwala_admin_remove_home_reel_cover_file($currentCover);
+                }
+                $cover = $upload['path'];
+            }
             if ($rowId > 0) {
                 $st = mysqli_prepare($conn, 'UPDATE home_reels SET video = ?, cover = ?, alt = ? WHERE id = ? LIMIT 1');
                 if ($st) {
@@ -93,24 +125,56 @@ function fruitwala_admin_try_home_list_post(mysqli $conn, string $slug, string $
     if ($listType === 'sale_banners') {
         if (isset($_POST['sale_banner_delete_id'])) {
             fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
             $did = (int) $_POST['sale_banner_delete_id'];
             if ($did > 0) {
+                $oldImg = '';
+                $stSel = mysqli_prepare($conn, 'SELECT image FROM home_sale_banners WHERE id = ? LIMIT 1');
+                if ($stSel) {
+                    mysqli_stmt_bind_param($stSel, 'i', $did);
+                    mysqli_stmt_execute($stSel);
+                    $res = mysqli_stmt_get_result($stSel);
+                    $row = $res ? mysqli_fetch_assoc($res) : null;
+                    mysqli_stmt_close($stSel);
+                    if (is_array($row)) {
+                        $oldImg = (string) ($row['image'] ?? '');
+                    }
+                }
                 $st = mysqli_prepare($conn, 'DELETE FROM home_sale_banners WHERE id = ? LIMIT 1');
                 if ($st) {
                     mysqli_stmt_bind_param($st, 'i', $did);
                     mysqli_stmt_execute($st);
                     mysqli_stmt_close($st);
                 }
+                fruitwala_admin_remove_home_sale_banner_file($oldImg !== '' ? $oldImg : null);
             }
             fruitwala_admin_home_list_redirect($slug, 'Banner removed.');
         }
         if (isset($_POST['sale_banner_save'])) {
             fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
             $rowId = (int) ($_POST['sale_banner_row_id'] ?? 0);
             $title = str_replace("\r\n", "\n", trim((string) ($_POST['sale_banner_title'] ?? '')));
             $subtitle = trim((string) ($_POST['sale_banner_subtitle'] ?? ''));
+            $currentImage = trim((string) ($_POST['sale_banner_image_current'] ?? ''));
             $image = trim((string) ($_POST['sale_banner_image'] ?? ''));
             $link = trim((string) ($_POST['sale_banner_link'] ?? ''));
+            $upload = fruitwala_admin_save_home_sale_banner_upload();
+            if ($upload['error'] !== null) {
+                $_SESSION['admin_flash'] = $upload['error'];
+                if ($rowId > 0) {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=edit&id=' . $rowId);
+                } else {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=add');
+                }
+                exit;
+            }
+            if ($upload['path'] !== null) {
+                if ($rowId > 0 && $currentImage !== '' && $currentImage !== $upload['path']) {
+                    fruitwala_admin_remove_home_sale_banner_file($currentImage);
+                }
+                $image = $upload['path'];
+            }
             if ($rowId > 0) {
                 $st = mysqli_prepare(
                     $conn,
@@ -134,6 +198,84 @@ function fruitwala_admin_try_home_list_post(mysqli $conn, string $slug, string $
                 }
             }
             fruitwala_admin_home_list_redirect($slug, 'Banner saved.');
+        }
+        return;
+    }
+
+    if ($listType === 'offer_banners') {
+        if (isset($_POST['offer_banner_delete_id'])) {
+            fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
+            $did = (int) $_POST['offer_banner_delete_id'];
+            if ($did > 0) {
+                $oldImg = '';
+                $stSel = mysqli_prepare($conn, 'SELECT image FROM home_offer_banners WHERE id = ? LIMIT 1');
+                if ($stSel) {
+                    mysqli_stmt_bind_param($stSel, 'i', $did);
+                    mysqli_stmt_execute($stSel);
+                    $res = mysqli_stmt_get_result($stSel);
+                    $row = $res ? mysqli_fetch_assoc($res) : null;
+                    mysqli_stmt_close($stSel);
+                    if (is_array($row)) {
+                        $oldImg = (string) ($row['image'] ?? '');
+                    }
+                }
+                $st = mysqli_prepare($conn, 'DELETE FROM home_offer_banners WHERE id = ? LIMIT 1');
+                if ($st) {
+                    mysqli_stmt_bind_param($st, 'i', $did);
+                    mysqli_stmt_execute($st);
+                    mysqli_stmt_close($st);
+                }
+                fruitwala_admin_remove_home_offer_banner_file($oldImg !== '' ? $oldImg : null);
+            }
+            fruitwala_admin_home_list_redirect($slug, 'Offer banner removed.');
+        }
+        if (isset($_POST['offer_banner_save'])) {
+            fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
+            $rowId = (int) ($_POST['offer_banner_row_id'] ?? 0);
+            $currentImage = trim((string) ($_POST['offer_banner_image_current'] ?? ''));
+            $image = trim((string) ($_POST['offer_banner_image'] ?? ''));
+            $link = trim((string) ($_POST['offer_banner_link'] ?? ''));
+            $upload = fruitwala_admin_save_home_offer_banner_upload();
+            if ($upload['error'] !== null) {
+                $_SESSION['admin_flash'] = $upload['error'];
+                if ($rowId > 0) {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=edit&id=' . $rowId);
+                } else {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=add');
+                }
+                exit;
+            }
+            if ($upload['path'] !== null) {
+                if ($rowId > 0 && $currentImage !== '' && $currentImage !== $upload['path']) {
+                    fruitwala_admin_remove_home_offer_banner_file($currentImage);
+                }
+                $image = $upload['path'];
+            }
+            if ($rowId > 0) {
+                $st = mysqli_prepare(
+                    $conn,
+                    'UPDATE home_offer_banners SET image = ?, link = ? WHERE id = ? LIMIT 1'
+                );
+                if ($st) {
+                    mysqli_stmt_bind_param($st, 'ssi', $image, $link, $rowId);
+                    mysqli_stmt_execute($st);
+                    mysqli_stmt_close($st);
+                }
+            } else {
+                $next = fruitwala_admin_home_list_next_sort($conn, 'home_offer_banners');
+                $st = mysqli_prepare(
+                    $conn,
+                    'INSERT INTO home_offer_banners (sort_order, image, link) VALUES (?,?,?)'
+                );
+                if ($st) {
+                    mysqli_stmt_bind_param($st, 'iss', $next, $image, $link);
+                    mysqli_stmt_execute($st);
+                    mysqli_stmt_close($st);
+                }
+            }
+            fruitwala_admin_home_list_redirect($slug, 'Offer banner saved.');
         }
         return;
     }
@@ -256,6 +398,132 @@ function fruitwala_admin_try_home_list_post(mysqli $conn, string $slug, string $
         return;
     }
 
+    if ($listType === 'gallery') {
+        if (isset($_POST['gallery_item_save'])) {
+            fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
+            $rowId = (int) ($_POST['gallery_item_id'] ?? 0);
+            $title = trim((string) ($_POST['gallery_item_title'] ?? ''));
+            $currentImage = trim((string) ($_POST['gallery_item_image_current'] ?? ''));
+            $image = trim((string) ($_POST['gallery_item_image'] ?? ''));
+            $upload = fruitwala_admin_save_home_gallery_item_upload();
+            if ($upload['error'] !== null) {
+                $_SESSION['admin_flash'] = $upload['error'];
+                if ($rowId > 0) {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=edit&id=' . $rowId);
+                } else {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=add');
+                }
+                exit;
+            }
+            if ($upload['path'] !== null) {
+                if ($rowId > 0 && $currentImage !== '' && $currentImage !== $upload['path']) {
+                    fruitwala_admin_remove_home_gallery_item_file($currentImage);
+                }
+                $image = $upload['path'];
+            }
+            if ($rowId > 0) {
+                $st = mysqli_prepare($conn, 'UPDATE home_gallery_items SET title = ?, image = ? WHERE id = ? LIMIT 1');
+                if ($st) {
+                    mysqli_stmt_bind_param($st, 'ssi', $title, $image, $rowId);
+                    mysqli_stmt_execute($st);
+                    mysqli_stmt_close($st);
+                }
+            } else {
+                $next = fruitwala_admin_home_list_next_sort($conn, 'home_gallery_items');
+                $st = mysqli_prepare($conn, 'INSERT INTO home_gallery_items (sort_order, title, image) VALUES (?,?,?)');
+                if ($st) {
+                    mysqli_stmt_bind_param($st, 'iss', $next, $title, $image);
+                    mysqli_stmt_execute($st);
+                    mysqli_stmt_close($st);
+                }
+            }
+            fruitwala_admin_home_list_redirect($slug, 'Gallery image saved.');
+        }
+        return;
+    }
+
+    if ($listType === 'gallery_strip_sidebar') {
+        if (isset($_POST['strip_sidebar_delete_id'])) {
+            fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
+            $did = (int) $_POST['strip_sidebar_delete_id'];
+            if ($did > 0) {
+                $oldThumb = '';
+                $stSel = mysqli_prepare($conn, 'SELECT thumb FROM home_gallery_strip_sidebar WHERE id = ? LIMIT 1');
+                if ($stSel) {
+                    mysqli_stmt_bind_param($stSel, 'i', $did);
+                    mysqli_stmt_execute($stSel);
+                    $res = mysqli_stmt_get_result($stSel);
+                    $row = $res ? mysqli_fetch_assoc($res) : null;
+                    mysqli_stmt_close($stSel);
+                    if (is_array($row)) {
+                        $oldThumb = (string) ($row['thumb'] ?? '');
+                    }
+                }
+                $st = mysqli_prepare($conn, 'DELETE FROM home_gallery_strip_sidebar WHERE id = ? LIMIT 1');
+                if ($st) {
+                    mysqli_stmt_bind_param($st, 'i', $did);
+                    mysqli_stmt_execute($st);
+                    mysqli_stmt_close($st);
+                }
+                fruitwala_admin_remove_gallery_strip_sidebar_thumb_file($oldThumb !== '' ? $oldThumb : null);
+            }
+            fruitwala_admin_home_list_redirect($slug, 'Sidebar post removed.');
+        }
+        if (isset($_POST['strip_sidebar_save'])) {
+            fruitwala_home_ensure_home_list_tables($conn);
+            require_once __DIR__ . '/upload_image.php';
+            $rowId = (int) ($_POST['strip_sidebar_row_id'] ?? 0);
+            $title = trim((string) ($_POST['strip_sidebar_title'] ?? ''));
+            $meta1 = trim((string) ($_POST['strip_sidebar_meta1'] ?? ''));
+            $meta2 = trim((string) ($_POST['strip_sidebar_meta2'] ?? ''));
+            $link = trim((string) ($_POST['strip_sidebar_link'] ?? ''));
+            $currentThumb = trim((string) ($_POST['strip_sidebar_thumb_current'] ?? ''));
+            $thumb = trim((string) ($_POST['strip_sidebar_thumb'] ?? ''));
+            $upload = fruitwala_admin_save_gallery_strip_sidebar_thumb_upload();
+            if ($upload['error'] !== null) {
+                $_SESSION['admin_flash'] = $upload['error'];
+                if ($rowId > 0) {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=edit&id=' . $rowId);
+                } else {
+                    header('Location: home_edit.php?s=' . rawurlencode($slug) . '&sub=add');
+                }
+                exit;
+            }
+            if ($upload['path'] !== null) {
+                if ($rowId > 0 && $currentThumb !== '' && $currentThumb !== $upload['path']) {
+                    fruitwala_admin_remove_gallery_strip_sidebar_thumb_file($currentThumb);
+                }
+                $thumb = $upload['path'];
+            }
+            if ($rowId > 0) {
+                $st = mysqli_prepare(
+                    $conn,
+                    'UPDATE home_gallery_strip_sidebar SET thumb = ?, title = ?, meta1 = ?, meta2 = ?, link = ? WHERE id = ? LIMIT 1'
+                );
+                if ($st) {
+                    mysqli_stmt_bind_param($st, 'sssssi', $thumb, $title, $meta1, $meta2, $link, $rowId);
+                    mysqli_stmt_execute($st);
+                    mysqli_stmt_close($st);
+                }
+            } else {
+                $next = fruitwala_admin_home_list_next_sort($conn, 'home_gallery_strip_sidebar');
+                $st = mysqli_prepare(
+                    $conn,
+                    'INSERT INTO home_gallery_strip_sidebar (sort_order, thumb, title, meta1, meta2, link) VALUES (?,?,?,?,?,?)'
+                );
+                if ($st) {
+                    mysqli_stmt_bind_param($st, 'isssss', $next, $thumb, $title, $meta1, $meta2, $link);
+                    mysqli_stmt_execute($st);
+                    mysqli_stmt_close($st);
+                }
+            }
+            fruitwala_admin_home_list_redirect($slug, 'Sidebar post saved.');
+        }
+        return;
+    }
+
     if ($listType === 'instagram') {
         if (isset($_POST['ig_tile_delete_id'])) {
             fruitwala_home_ensure_home_list_tables($conn);
@@ -334,6 +602,40 @@ function fruitwala_admin_home_list_item_form(mysqli $conn, string $slug, string 
                 }
             }
             $_SESSION['admin_flash'] = 'Reel not found.';
+            header('Location: home_edit.php?s=' . rawurlencode($slug));
+            exit;
+        }
+        if ($sub === 'edit') {
+            header('Location: home_edit.php?s=' . rawurlencode($slug));
+            exit;
+        }
+
+        return null;
+    }
+
+    if ($listType === 'offer_banners') {
+        if ($sub === 'add') {
+            return ['id' => 0, 'image' => '', 'link' => ''];
+        }
+        if ($sub === 'edit' && $editId > 0) {
+            fruitwala_home_ensure_home_list_tables($conn);
+            $st = mysqli_prepare(
+                $conn,
+                'SELECT id, image, link FROM home_offer_banners WHERE id = ? LIMIT 1'
+            );
+            if ($st) {
+                mysqli_stmt_bind_param($st, 'i', $editId);
+                mysqli_stmt_execute($st);
+                $res = mysqli_stmt_get_result($st);
+                $row = $res ? mysqli_fetch_assoc($res) : null;
+                mysqli_stmt_close($st);
+                if (is_array($row)) {
+                    $row['id'] = (int) $row['id'];
+
+                    return $row;
+                }
+            }
+            $_SESSION['admin_flash'] = 'Offer banner not found.';
             header('Location: home_edit.php?s=' . rawurlencode($slug));
             exit;
         }
@@ -478,6 +780,74 @@ function fruitwala_admin_home_list_item_form(mysqli $conn, string $slug, string 
         return null;
     }
 
+    if ($listType === 'gallery') {
+        if ($sub === '' || $sub === 'add') {
+            return ['id' => 0, 'title' => '', 'image' => ''];
+        }
+        if ($sub === 'edit' && $editId > 0) {
+            fruitwala_home_ensure_home_list_tables($conn);
+            $st = mysqli_prepare(
+                $conn,
+                'SELECT id, title, image FROM home_gallery_items WHERE id = ? LIMIT 1'
+            );
+            if ($st) {
+                mysqli_stmt_bind_param($st, 'i', $editId);
+                mysqli_stmt_execute($st);
+                $res = mysqli_stmt_get_result($st);
+                $row = $res ? mysqli_fetch_assoc($res) : null;
+                mysqli_stmt_close($st);
+                if (is_array($row)) {
+                    $row['id'] = (int) $row['id'];
+
+                    return $row;
+                }
+            }
+            $_SESSION['admin_flash'] = 'Gallery image not found.';
+            header('Location: gallery_view.php');
+            exit;
+        }
+        if ($sub === 'edit') {
+            header('Location: gallery_view.php');
+            exit;
+        }
+
+        return null;
+    }
+
+    if ($listType === 'gallery_strip_sidebar') {
+        if ($sub === 'add') {
+            return ['id' => 0, 'thumb' => '', 'title' => '', 'meta1' => '', 'meta2' => '', 'link' => ''];
+        }
+        if ($sub === 'edit' && $editId > 0) {
+            fruitwala_home_ensure_home_list_tables($conn);
+            $st = mysqli_prepare(
+                $conn,
+                'SELECT id, thumb, title, meta1, meta2, link FROM home_gallery_strip_sidebar WHERE id = ? LIMIT 1'
+            );
+            if ($st) {
+                mysqli_stmt_bind_param($st, 'i', $editId);
+                mysqli_stmt_execute($st);
+                $res = mysqli_stmt_get_result($st);
+                $row = $res ? mysqli_fetch_assoc($res) : null;
+                mysqli_stmt_close($st);
+                if (is_array($row)) {
+                    $row['id'] = (int) $row['id'];
+
+                    return $row;
+                }
+            }
+            $_SESSION['admin_flash'] = 'Post not found.';
+            header('Location: gallery_strip_sidebar_view.php');
+            exit;
+        }
+        if ($sub === 'edit') {
+            header('Location: gallery_strip_sidebar_view.php');
+            exit;
+        }
+
+        return null;
+    }
+
     return null;
 }
 
@@ -504,6 +874,42 @@ function fruitwala_admin_site_relative_href(string $siteRelativePath): string
     }
 
     return '../' . ltrim($p, '/');
+}
+
+/**
+ * DataTables cell: image preview from site-root-relative path (no path text).
+ */
+function fruitwala_admin_home_list_image_thumb_cell(string $relativePath, string $alt = ''): void
+{
+    $relativePath = trim(str_replace('\\', '/', $relativePath));
+    if ($relativePath === '') {
+        echo '<span class="admin-dt-missing" style="color:var(--admin-muted);font-size:0.85rem">—</span>';
+
+        return;
+    }
+    $src = htmlspecialchars(fruitwala_admin_site_relative_href($relativePath), ENT_QUOTES, 'UTF-8');
+    $altEsc = htmlspecialchars($alt !== '' ? $alt : 'Preview', ENT_QUOTES, 'UTF-8');
+    echo '<img class="admin-home-dt-thumb-img" src="' . $src . '" alt="' . $altEsc . '" width="72" height="72" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--admin-border);vertical-align:middle">';
+}
+
+/**
+ * DataTables cell: short video preview for common file extensions (no path text).
+ */
+function fruitwala_admin_home_list_video_thumb_cell(string $relativePath): void
+{
+    $relativePath = trim(str_replace('\\', '/', $relativePath));
+    if ($relativePath === '') {
+        echo '<span class="admin-dt-missing" style="color:var(--admin-muted);font-size:0.85rem">—</span>';
+
+        return;
+    }
+    if (preg_match('/\.(mp4|webm|ogg)(\?.*)?$/i', $relativePath) === 1) {
+        $src = htmlspecialchars(fruitwala_admin_site_relative_href($relativePath), ENT_QUOTES, 'UTF-8');
+        echo '<video class="admin-home-dt-thumb-vid" src="' . $src . '" muted playsinline preload="metadata" style="width:120px;height:68px;object-fit:cover;border-radius:8px;border:1px solid var(--admin-border);vertical-align:middle;background:#0f172a"></video>';
+
+        return;
+    }
+    echo '<span style="display:inline-flex;align-items:center;gap:0.35rem;color:var(--admin-muted);font-size:0.85rem" title="Video file"><i class="fas fa-film" aria-hidden="true"></i><span>Video</span></span>';
 }
 
 /**
@@ -536,10 +942,11 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
     <p style="margin:0 0 1rem">
       <a class="btn btn-ghost btn-sm" href="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-arrow-left"></i> Back to reels</a>
     </p>
-    <form method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" class="admin-form">
+    <form method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" class="admin-form" enctype="multipart/form-data">
       <?= admin_csrf_field() ?>
       <input type="hidden" name="reel_save" value="1">
       <input type="hidden" name="reel_row_id" value="<?= (int) $itemForm['id'] ?>">
+      <input type="hidden" name="reel_cover_current" value="<?= htmlspecialchars((string) $itemForm['cover'], ENT_QUOTES, 'UTF-8') ?>">
       <div class="admin-card" style="margin-bottom:1.25rem">
         <div class="admin-card-header"><?= (int) $itemForm['id'] > 0 ? 'Edit reel' : 'New reel' ?></div>
         <div class="admin-card-body">
@@ -548,8 +955,28 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
             <input type="text" id="reel_video" name="reel_video" value="<?= htmlspecialchars((string) $itemForm['video'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
           </div>
           <div class="form-group">
-            <label for="reel_cover">Cover image</label>
+            <label for="reel_cover">Cover image path</label>
             <input type="text" id="reel_cover" name="reel_cover" value="<?= htmlspecialchars((string) $itemForm['cover'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">Optional path relative to site root, or upload below.</p>
+          </div>
+          <?php
+            $reelCover = (string) ($itemForm['cover'] ?? '');
+          if ($reelCover !== '') {
+              $reelPreviewSrc = '../' . ltrim(str_replace('\\', '/', $reelCover), '/');
+              ?>
+          <div class="form-group">
+            <span class="label-like" style="display:block;margin-bottom:0.35rem;font-weight:600;font-size:0.9rem">Current cover preview</span>
+            <div style="margin-top:0.25rem">
+              <img src="<?= htmlspecialchars($reelPreviewSrc, ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-height:140px;border-radius:10px;border:1px solid var(--admin-border);vertical-align:middle">
+            </div>
+          </div>
+              <?php
+          }
+          ?>
+          <div class="form-group">
+            <label for="reel_cover_upload"><?= (int) $itemForm['id'] > 0 ? 'Replace cover with upload' : 'Upload cover image' ?></label>
+            <input type="file" id="reel_cover_upload" name="reel_cover_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">JPEG, PNG, GIF, or WebP. Max 5 MB. Saved under uploads/home_reels/.</p>
           </div>
           <div class="form-group">
             <label for="reel_alt">Alt text</label>
@@ -567,10 +994,11 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
     <p style="margin:0 0 1rem">
       <a class="btn btn-ghost btn-sm" href="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-arrow-left"></i> Back to banners</a>
     </p>
-    <form method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" class="admin-form">
+    <form method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" class="admin-form" enctype="multipart/form-data">
       <?= admin_csrf_field() ?>
       <input type="hidden" name="sale_banner_save" value="1">
       <input type="hidden" name="sale_banner_row_id" value="<?= (int) $itemForm['id'] ?>">
+      <input type="hidden" name="sale_banner_image_current" value="<?= htmlspecialchars((string) $itemForm['image'], ENT_QUOTES, 'UTF-8') ?>">
       <div class="admin-card" style="margin-bottom:1.25rem">
         <div class="admin-card-header"><?= (int) $itemForm['id'] > 0 ? 'Edit banner' : 'New banner' ?></div>
         <div class="admin-card-body">
@@ -585,6 +1013,26 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
           <div class="form-group">
             <label for="sale_banner_image">Background image</label>
             <input type="text" id="sale_banner_image" name="sale_banner_image" value="<?= htmlspecialchars((string) $itemForm['image'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">Optional path relative to site root, or upload below.</p>
+          </div>
+          <?php
+          $saleImg = (string) ($itemForm['image'] ?? '');
+          if ($saleImg !== '') {
+              $salePreviewSrc = '../' . ltrim(str_replace('\\', '/', $saleImg), '/');
+              ?>
+          <div class="form-group">
+            <span class="label-like" style="display:block;margin-bottom:0.35rem;font-weight:600;font-size:0.9rem">Current banner preview</span>
+            <div style="margin-top:0.25rem">
+              <img src="<?= htmlspecialchars($salePreviewSrc, ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-height:140px;border-radius:10px;border:1px solid var(--admin-border);vertical-align:middle">
+            </div>
+          </div>
+              <?php
+          }
+          ?>
+          <div class="form-group">
+            <label for="sale_banner_image_upload"><?= (int) $itemForm['id'] > 0 ? 'Replace banner with upload' : 'Upload banner image' ?></label>
+            <input type="file" id="sale_banner_image_upload" name="sale_banner_image_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">JPEG, PNG, GIF, or WebP. Max 5 MB. Saved under uploads/home_sale_banners/.</p>
           </div>
           <div class="form-group">
             <label for="sale_banner_link">Link URL</label>
@@ -593,6 +1041,54 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
         </div>
       </div>
       <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save banner</button>
+    </form>
+            <?php
+            return;
+        }
+        if ($listType === 'offer_banners') {
+            ?>
+    <p style="margin:0 0 1rem">
+      <a class="btn btn-ghost btn-sm" href="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-arrow-left"></i> Back to offer banners</a>
+    </p>
+    <form method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" class="admin-form" enctype="multipart/form-data">
+      <?= admin_csrf_field() ?>
+      <input type="hidden" name="offer_banner_save" value="1">
+      <input type="hidden" name="offer_banner_row_id" value="<?= (int) $itemForm['id'] ?>">
+      <input type="hidden" name="offer_banner_image_current" value="<?= htmlspecialchars((string) $itemForm['image'], ENT_QUOTES, 'UTF-8') ?>">
+      <div class="admin-card" style="margin-bottom:1.25rem">
+        <div class="admin-card-header"><?= (int) $itemForm['id'] > 0 ? 'Edit offer banner' : 'New offer banner' ?></div>
+        <div class="admin-card-body">
+          <div class="form-group">
+            <label for="offer_banner_image">Banner image</label>
+            <input type="text" id="offer_banner_image" name="offer_banner_image" value="<?= htmlspecialchars((string) $itemForm['image'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">Optional path relative to site root, or upload below.</p>
+          </div>
+          <?php
+          $offerImg = (string) ($itemForm['image'] ?? '');
+          if ($offerImg !== '') {
+              $offerPreviewSrc = '../' . ltrim(str_replace('\\', '/', $offerImg), '/');
+              ?>
+          <div class="form-group">
+            <span class="label-like" style="display:block;margin-bottom:0.35rem;font-weight:600;font-size:0.9rem">Current banner preview</span>
+            <div style="margin-top:0.25rem">
+              <img src="<?= htmlspecialchars($offerPreviewSrc, ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-height:140px;border-radius:10px;border:1px solid var(--admin-border);vertical-align:middle">
+            </div>
+          </div>
+              <?php
+          }
+          ?>
+          <div class="form-group">
+            <label for="offer_banner_image_upload"><?= (int) $itemForm['id'] > 0 ? 'Replace banner with upload' : 'Upload banner image' ?></label>
+            <input type="file" id="offer_banner_image_upload" name="offer_banner_image_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">JPEG, PNG, GIF, or WebP. Max 5 MB. Saved under uploads/home_offer_banners/.</p>
+          </div>
+          <div class="form-group">
+            <label for="offer_banner_link">Link URL</label>
+            <input type="text" id="offer_banner_link" name="offer_banner_link" value="<?= htmlspecialchars((string) $itemForm['link'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save offer banner</button>
     </form>
             <?php
             return;
@@ -710,6 +1206,114 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
             <?php
             return;
         }
+        if ($listType === 'gallery') {
+            ?>
+    <p style="margin:0 0 1rem">
+      <a class="btn btn-ghost btn-sm" href="gallery_view.php"><i class="fas fa-arrow-left"></i> Back to gallery list</a>
+    </p>
+    <form method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" class="admin-form" enctype="multipart/form-data">
+      <?= admin_csrf_field() ?>
+      <input type="hidden" name="gallery_item_save" value="1">
+      <input type="hidden" name="gallery_item_id" value="<?= (int) $itemForm['id'] ?>">
+      <input type="hidden" name="gallery_item_image_current" value="<?= htmlspecialchars((string) $itemForm['image'], ENT_QUOTES, 'UTF-8') ?>">
+      <div class="admin-card" style="margin-bottom:1.25rem">
+        <div class="admin-card-header"><?= (int) $itemForm['id'] > 0 ? 'Edit gallery image' : 'Add gallery image' ?></div>
+        <div class="admin-card-body">
+          <div class="form-group">
+            <label for="gallery_item_title">Title</label>
+            <input type="text" id="gallery_item_title" name="gallery_item_title" value="<?= htmlspecialchars((string) $itemForm['title'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px" required>
+          </div>
+          <div class="form-group">
+            <label for="gallery_item_image">Image path</label>
+            <input type="text" id="gallery_item_image" name="gallery_item_image" value="<?= htmlspecialchars((string) $itemForm['image'], ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">Optional path relative to site root, or upload below.</p>
+          </div>
+          <?php
+            $galleryImg = (string) ($itemForm['image'] ?? '');
+          if ($galleryImg !== '') {
+              $galleryPreviewSrc = '../' . ltrim(str_replace('\\', '/', $galleryImg), '/');
+              ?>
+          <div class="form-group">
+            <span class="label-like" style="display:block;margin-bottom:0.35rem;font-weight:600;font-size:0.9rem">Current image preview</span>
+            <div style="margin-top:0.25rem">
+              <img src="<?= htmlspecialchars($galleryPreviewSrc, ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-height:140px;border-radius:10px;border:1px solid var(--admin-border);vertical-align:middle">
+            </div>
+          </div>
+              <?php
+          }
+          ?>
+          <div class="form-group">
+            <label for="gallery_item_upload"><?= (int) $itemForm['id'] > 0 ? 'Replace image with upload' : 'Upload image' ?></label>
+            <input type="file" id="gallery_item_upload" name="gallery_item_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">JPEG, PNG, GIF, or WebP. Max 5 MB. Saved under uploads/home_gallery/.</p>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save gallery image</button>
+    </form>
+            <?php
+            return;
+        }
+        if ($listType === 'gallery_strip_sidebar') {
+            ?>
+    <p style="margin:0 0 1rem">
+      <a class="btn btn-ghost btn-sm" href="gallery_strip_sidebar_view.php"><i class="fas fa-arrow-left"></i> Back to list</a>
+    </p>
+    <form method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" class="admin-form" enctype="multipart/form-data">
+      <?= admin_csrf_field() ?>
+      <input type="hidden" name="strip_sidebar_save" value="1">
+      <input type="hidden" name="strip_sidebar_row_id" value="<?= (int) $itemForm['id'] ?>">
+      <input type="hidden" name="strip_sidebar_thumb_current" value="<?= htmlspecialchars((string) ($itemForm['thumb'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+      <div class="admin-card" style="margin-bottom:1.25rem">
+        <div class="admin-card-header"><?= (int) $itemForm['id'] > 0 ? 'Edit sidebar post' : 'Add sidebar post' ?></div>
+        <div class="admin-card-body">
+          <div class="form-group">
+            <label for="strip_sidebar_title">Title</label>
+            <input type="text" id="strip_sidebar_title" name="strip_sidebar_title" value="<?= htmlspecialchars((string) ($itemForm['title'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px" required>
+          </div>
+          <div class="form-group">
+            <label for="strip_sidebar_thumb">Thumbnail path</label>
+            <input type="text" id="strip_sidebar_thumb" name="strip_sidebar_thumb" value="<?= htmlspecialchars((string) ($itemForm['thumb'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">Relative to site root, or upload below.</p>
+          </div>
+          <?php
+            $sbThumb = (string) ($itemForm['thumb'] ?? '');
+            if ($sbThumb !== '') {
+                $sbPreview = '../' . ltrim(str_replace('\\', '/', $sbThumb), '/');
+                ?>
+          <div class="form-group">
+            <span class="label-like" style="display:block;margin-bottom:0.35rem;font-weight:600;font-size:0.9rem">Current thumbnail</span>
+            <div style="margin-top:0.25rem">
+              <img src="<?= htmlspecialchars($sbPreview, ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-height:120px;border-radius:10px;border:1px solid var(--admin-border);vertical-align:middle">
+            </div>
+          </div>
+                <?php
+            }
+            ?>
+          <div class="form-group">
+            <label for="strip_sidebar_thumb_upload"><?= (int) $itemForm['id'] > 0 ? 'Replace thumbnail' : 'Upload thumbnail' ?></label>
+            <input type="file" id="strip_sidebar_thumb_upload" name="strip_sidebar_thumb_upload" accept="image/jpeg,image/png,image/gif,image/webp">
+            <p style="margin:0.35rem 0 0;font-size:0.75rem;color:var(--admin-muted)">JPEG, PNG, GIF, or WebP. Max 5 MB. Saved under uploads/home_strip_sidebar/.</p>
+          </div>
+          <div class="form-group">
+            <label for="strip_sidebar_meta1">Meta line 1 (e.g. author)</label>
+            <input type="text" id="strip_sidebar_meta1" name="strip_sidebar_meta1" value="<?= htmlspecialchars((string) ($itemForm['meta1'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+          </div>
+          <div class="form-group">
+            <label for="strip_sidebar_meta2">Meta line 2 (e.g. category)</label>
+            <input type="text" id="strip_sidebar_meta2" name="strip_sidebar_meta2" value="<?= htmlspecialchars((string) ($itemForm['meta2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+          </div>
+          <div class="form-group">
+            <label for="strip_sidebar_link">Link URL</label>
+            <input type="text" id="strip_sidebar_link" name="strip_sidebar_link" value="<?= htmlspecialchars((string) ($itemForm['link'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="max-width:640px">
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save post</button>
+    </form>
+            <?php
+            return;
+        }
     }
 
     fruitwala_home_ensure_home_list_tables($conn);
@@ -773,8 +1377,8 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
             <?php foreach ($rows as $row): ?>
               <tr>
                 <td><?= (int) $row['sort_order'] ?></td>
-                <td><code style="font-size:0.8rem"><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['video'], 56), ENT_QUOTES, 'UTF-8') ?></code></td>
-                <td><code style="font-size:0.8rem"><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['cover'], 48), ENT_QUOTES, 'UTF-8') ?></code></td>
+                <td><?php fruitwala_admin_home_list_video_thumb_cell((string) $row['video']); ?></td>
+                <td><?php fruitwala_admin_home_list_image_thumb_cell((string) $row['cover'], (string) $row['alt']); ?></td>
                 <td><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['alt'], 40), ENT_QUOTES, 'UTF-8') ?></td>
                 <td class="hero-dt-col-actions">
                   <div class="hero-dt-actions-inner">
@@ -793,7 +1397,7 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
       </div>
     </div>
         <?php
-        fruitwala_admin_home_list_datatable_assets($tableId, 4, $emptyMsg);
+        fruitwala_admin_home_list_datatable_assets($tableId, 4, $emptyMsg, [1, 2]);
         return;
     }
 
@@ -834,7 +1438,7 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
                 <td><?= (int) $row['sort_order'] ?></td>
                 <td><?= htmlspecialchars($plainTitle, ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['subtitle'], 36), ENT_QUOTES, 'UTF-8') ?></td>
-                <td><code style="font-size:0.8rem"><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['image'], 40), ENT_QUOTES, 'UTF-8') ?></code></td>
+                <td><?php fruitwala_admin_home_list_image_thumb_cell((string) $row['image'], $plainTitle); ?></td>
                 <td class="hero-dt-col-actions">
                   <div class="hero-dt-actions-inner">
                     <a class="hero-dt-icon-btn hero-dt-icon-btn--edit" href="<?= htmlspecialchars($base . '&sub=edit&id=' . (int) $row['id'], ENT_QUOTES, 'UTF-8') ?>" title="Edit"><i class="fas fa-pen" aria-hidden="true"></i><span class="visually-hidden">Edit</span></a>
@@ -852,7 +1456,60 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
       </div>
     </div>
         <?php
-        fruitwala_admin_home_list_datatable_assets($tableId, 4, 'No banners yet. Click “Add banner” to create one.');
+        fruitwala_admin_home_list_datatable_assets($tableId, 4, 'No banners yet. Click “Add banner” to create one.', [3]);
+        return;
+    }
+
+    if ($listType === 'offer_banners') {
+        $rows = [];
+        $q = mysqli_query($conn, 'SELECT id, sort_order, image, link FROM home_offer_banners ORDER BY sort_order ASC, id ASC');
+        if ($q) {
+            while ($r = mysqli_fetch_assoc($q)) {
+                $rows[] = $r;
+            }
+            mysqli_free_result($q);
+        }
+        $tableId = 'offerBannersTable';
+        ?>
+    <div class="admin-card hero-dt-card">
+      <div class="admin-card-header">Offer banners</div>
+      <div class="admin-card-body hero-dt-shell" style="overflow-x:auto">
+        <div class="hero-dt-add-row">
+          <a class="hero-dt-btn-add" href="<?= htmlspecialchars($base . '&sub=add', ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-plus"></i> Add offer banner</a>
+        </div>
+        <table id="<?= htmlspecialchars($tableId, ENT_QUOTES, 'UTF-8') ?>" class="hero-dt-table" style="width:100%">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Image</th>
+              <th>Link</th>
+              <th class="hero-dt-col-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($rows as $row): ?>
+              <tr>
+                <td><?= (int) $row['sort_order'] ?></td>
+                <td><?php fruitwala_admin_home_list_image_thumb_cell((string) $row['image'], 'Offer banner'); ?></td>
+                <td><code style="font-size:0.8rem"><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['link'], 52), ENT_QUOTES, 'UTF-8') ?></code></td>
+                <td class="hero-dt-col-actions">
+                  <div class="hero-dt-actions-inner">
+                    <a class="hero-dt-icon-btn hero-dt-icon-btn--edit" href="<?= htmlspecialchars($base . '&sub=edit&id=' . (int) $row['id'], ENT_QUOTES, 'UTF-8') ?>" title="Edit"><i class="fas fa-pen" aria-hidden="true"></i><span class="visually-hidden">Edit</span></a>
+                    <form class="hero-dt-icon-form" method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" onsubmit="return confirm('Delete this offer banner?');">
+                      <?= admin_csrf_field() ?>
+                      <input type="hidden" name="offer_banner_delete_id" value="<?= (int) $row['id'] ?>">
+                      <button type="submit" class="hero-dt-icon-btn hero-dt-icon-btn--delete" title="Delete"><i class="fas fa-trash-alt" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+        <?php
+        fruitwala_admin_home_list_datatable_assets($tableId, 3, 'No offer banners yet. Click “Add offer banner” to create one.', [1]);
         return;
     }
 
@@ -967,6 +1624,64 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
         return;
     }
 
+    if ($listType === 'gallery_strip_sidebar') {
+        fruitwala_home_maybe_migrate_gallery_strip_sidebar_rows($conn);
+        $rows = [];
+        $q = mysqli_query($conn, 'SELECT id, sort_order, thumb, title, meta1, meta2, link FROM home_gallery_strip_sidebar ORDER BY sort_order ASC, id ASC');
+        if ($q) {
+            while ($r = mysqli_fetch_assoc($q)) {
+                $rows[] = $r;
+            }
+            mysqli_free_result($q);
+        }
+        $tableId = 'galleryStripSidebarTable';
+        ?>
+    <div class="admin-card hero-dt-card">
+      <div class="admin-card-header">Sidebar posts</div>
+      <div class="admin-card-body hero-dt-shell" style="overflow-x:auto">
+        <div class="hero-dt-add-row">
+          <a class="hero-dt-btn-add" href="<?= htmlspecialchars($base . '&sub=add', ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-plus"></i> Add post</a>
+        </div>
+        <table id="<?= htmlspecialchars($tableId, ENT_QUOTES, 'UTF-8') ?>" class="hero-dt-table" style="width:100%">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Title</th>
+              <th>Meta 1</th>
+              <th>Meta 2</th>
+              <th>Thumb</th>
+              <th class="hero-dt-col-actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($rows as $row): ?>
+              <tr>
+                <td><?= (int) $row['sort_order'] ?></td>
+                <td><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['title'], 56), ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['meta1'], 28), ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars(fruitwala_admin_home_list_trunc((string) $row['meta2'], 28), ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?php fruitwala_admin_home_list_image_thumb_cell((string) $row['thumb'], (string) $row['title']); ?></td>
+                <td class="hero-dt-col-actions">
+                  <div class="hero-dt-actions-inner">
+                    <a class="hero-dt-icon-btn hero-dt-icon-btn--edit" href="<?= htmlspecialchars($base . '&sub=edit&id=' . (int) $row['id'], ENT_QUOTES, 'UTF-8') ?>" title="Edit"><i class="fas fa-pen" aria-hidden="true"></i><span class="visually-hidden">Edit</span></a>
+                    <form class="hero-dt-icon-form" method="post" action="<?= htmlspecialchars($base, ENT_QUOTES, 'UTF-8') ?>" onsubmit="return confirm('Delete this post?');">
+                      <?= admin_csrf_field() ?>
+                      <input type="hidden" name="strip_sidebar_delete_id" value="<?= (int) $row['id'] ?>">
+                      <button type="submit" class="hero-dt-icon-btn hero-dt-icon-btn--delete" title="Delete"><i class="fas fa-trash-alt" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+        <?php
+        fruitwala_admin_home_list_datatable_assets($tableId, 5, 'No sidebar posts yet. Click “Add post” to create one.', [4]);
+        return;
+    }
+
     if ($listType === 'instagram') {
         $rows = [];
         $q = mysqli_query($conn, 'SELECT id, sort_order, popup, img, alt FROM home_instagram_tiles ORDER BY sort_order ASC, id ASC');
@@ -1019,6 +1734,22 @@ function fruitwala_admin_render_home_list_ui(mysqli $conn, string $slug, string 
     </div>
         <?php
         fruitwala_admin_home_list_datatable_assets($tableId, 4, 'No images yet. Click “Add image” to create one.');
+        return;
+    }
+
+    if ($listType === 'gallery') {
+        ?>
+    <div class="admin-card">
+      <div class="admin-card-header">Gallery management</div>
+      <div class="admin-card-body">
+        <p style="margin:0 0 1rem;color:var(--admin-muted)">Use Add to create a gallery item with title and image, and View to manage all gallery records.</p>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <a class="btn btn-primary btn-sm" href="<?= htmlspecialchars($base . '&sub=add', ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-plus"></i> Add gallery image</a>
+          <a class="btn btn-ghost btn-sm" href="gallery_view.php"><i class="fas fa-eye"></i> View gallery</a>
+        </div>
+      </div>
+    </div>
+        <?php
     }
 }
 
